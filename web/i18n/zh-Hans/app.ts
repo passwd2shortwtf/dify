@@ -197,7 +197,10 @@ const translation = {
     noParams: '无需参数',
   },
   openInExplore: '在“探索”中打开',
-  showMyCreatedAppsOnly: '我创建的',
+  showMyCreatedAppsOnly: '仅显示我创建的',
+  gridView: '网格视图',
+  groupView: '分组视图',
+  noTag: '未分类',
   structOutput: {
     moreFillTip: '最多显示 10 级嵌套',
     required: '必填',

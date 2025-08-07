@@ -107,10 +107,14 @@ class AdvancedChatAppGenerateTaskPipeline:
             self._user_id = user.id
             user_session_id = user.session_id
             self._created_by_role = CreatorUserRole.END_USER
+            user_name = ""
+            user_email = ""
         elif isinstance(user, Account):
             self._user_id = user.id
             user_session_id = user.id
             self._created_by_role = CreatorUserRole.ACCOUNT
+            user_name = user.name
+            user_email = user.email
         else:
             raise NotImplementedError(f"User type not supported: {type(user)}")
 
@@ -121,6 +125,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                 SystemVariableKey.FILES: application_generate_entity.files,
                 SystemVariableKey.CONVERSATION_ID: conversation.id,
                 SystemVariableKey.USER_ID: user_session_id,
+                SystemVariableKey.USER_NAME: user_name,
+                SystemVariableKey.USER_EMAIL: user_email,
                 SystemVariableKey.DIALOGUE_COUNT: dialogue_count,
                 SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
                 SystemVariableKey.WORKFLOW_ID: workflow.id,

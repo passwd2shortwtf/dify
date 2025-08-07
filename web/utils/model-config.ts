@@ -6,6 +6,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
     return []
   const promptVariables: PromptVariable[] = []
   useInputs.forEach((item: any) => {
+    console.error('Processing item:', item)
     const isParagraph = !!item.paragraph
 
     const [type, content] = (() => {
@@ -40,6 +41,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         max_length: content.max_length,
         options: [],
         is_context_var,
+        default: content.default,
         hide: content.hide,
       })
     }
@@ -50,6 +52,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         required: content.required,
         type,
         options: [],
+        default: content.default,
         hide: content.hide,
       })
     }
@@ -61,6 +64,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         type: 'select',
         options: content.options,
         is_context_var,
+        default: content.default,
         hide: content.hide,
       })
     }
@@ -76,6 +80,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
           allowed_file_upload_methods: content.allowed_file_upload_methods,
           number_limits: 1,
         },
+        default: content.default,
         hide: content.hide,
       })
     }
@@ -91,6 +96,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
           allowed_file_upload_methods: content.allowed_file_upload_methods,
           number_limits: content.max_length,
         },
+        default: content.default,
         hide: content.hide,
       })
     }
@@ -105,10 +111,12 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         icon: content.icon,
         icon_background: content.icon_background,
         is_context_var,
+        default: content.default,
         hide: content.hide,
       })
     }
   })
+  console.error('Output:', promptVariables)
   return promptVariables
 }
 

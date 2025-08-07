@@ -20,7 +20,7 @@
   "scripts": {
     "dev": "cross-env NODE_OPTIONS='--inspect' next dev",
     "build": "next build",
-    "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
+    "start": "xcopy /E /I /Y .next\\static .next\\standalone\\.next\\static && xcopy /E /I /Y public .next\\standalone\\public && cross-env PORT=%npm_config_port% node .next/standalone/server.js",
     "lint": "pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
     "lint-only-show-error": "pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
     "fix": "next lint --fix",
@@ -76,6 +76,7 @@
     "clsx": "^2.1.1",
     "copy-to-clipboard": "^3.3.3",
     "crypto-js": "^4.2.0",
+    "date-fns": "^3.3.1",
     "dayjs": "^1.11.13",
     "decimal.js": "^10.4.3",
     "dompurify": "^3.2.4",

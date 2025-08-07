@@ -378,13 +378,14 @@ const TextGeneration: FC<IMainProps> = ({
   const fetchInitData = async () => {
     if (!isInstalledApp)
       await checkOrSetAccessToken()
-
+    console.log('installedAppInfo@@@@@@@@@@@@@@@@@@@', installedAppInfo)
     return Promise.all([
       isInstalledApp
         ? {
           app_id: installedAppInfo?.id,
           site: {
             title: installedAppInfo?.app.name,
+            description: installedAppInfo?.app.description,
             prompt_public: false,
             copyright: '',
             icon: installedAppInfo?.app.icon,
@@ -554,6 +555,7 @@ const TextGeneration: FC<IMainProps> = ({
     </div>
   }
 
+  console.log('siteInfo~~~~~~~~~~~~', siteInfo)
   return (
     <div className={cn(
       'bg-background-default-burn',
@@ -581,7 +583,10 @@ const TextGeneration: FC<IMainProps> = ({
             <MenuDropdown hideLogout={isInstalledApp || appAccessMode?.accessMode === AccessMode.PUBLIC} data={siteInfo} />
           </div>
           {siteInfo.description && (
-            <div className='system-xs-regular text-text-tertiary'>{siteInfo.description}</div>
+            <div 
+              className='system-xs-regular text-text-tertiary'
+              dangerouslySetInnerHTML={{ __html: siteInfo.description }}
+            />
           )}
           <TabHeader
             items={[

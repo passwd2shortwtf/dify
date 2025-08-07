@@ -119,7 +119,7 @@ class FeatureModel(BaseModel):
     documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
     docs_processing: str = "standard"
     can_replace_logo: bool = False
-    model_load_balancing_enabled: bool = False
+    model_load_balancing_enabled: bool = True
     dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)

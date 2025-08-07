@@ -55,7 +55,7 @@ services:
       # You can generate a strong key using `openssl rand -base64 42`.
       API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
       GIN_MODE: ${SANDBOX_GIN_MODE:-release}
-      WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-15}
+      WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-36000}
       ENABLE_NETWORK: ${SANDBOX_ENABLE_NETWORK:-true}
       HTTP_PROXY: ${SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
       HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
@@ -64,6 +64,7 @@ services:
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
       - ./volumes/sandbox/conf:/conf
+      - ./../../sandbox_mount:/out-repo
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8194/health" ]
     networks:
@@ -190,4 +191,4 @@ networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
     driver: bridge
-    internal: true
+    #internal: true

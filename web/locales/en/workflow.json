@@ -1,0 +1,12 @@
+{
+  "log": {
+    "title": "Workflow Log",
+    "started": "Workflow started",
+    "completed": "Workflow completed successfully",
+    "timeout": "Workflow execution timed out",
+    "nodeStarted": "Node started",
+    "nodeCompleted": "Node completed",
+    "iterationStarted": "Iteration started",
+    "error": "Error occurred"
+  }
+} 

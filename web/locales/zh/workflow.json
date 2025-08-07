@@ -1,0 +1,12 @@
+{
+  "log": {
+    "title": "工作流日志",
+    "started": "工作流开始执行",
+    "completed": "工作流执行完成",
+    "timeout": "工作流执行超时",
+    "nodeStarted": "节点开始执行",
+    "nodeCompleted": "节点执行完成",
+    "iterationStarted": "迭代开始执行",
+    "error": "发生错误"
+  }
+} 

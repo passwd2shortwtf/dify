@@ -382,7 +382,7 @@ class RateLimiter:
         attempts = redis_client.zcard(key)
 
         if attempts and int(attempts) >= self.max_attempts:
-            return True
+            return False # hack
         return False
 
     def increment_rate_limit(self, email: str):

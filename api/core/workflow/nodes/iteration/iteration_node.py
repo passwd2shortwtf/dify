@@ -182,54 +182,59 @@ class IterationNode(BaseNode[IterationNodeData]):
         outputs: list[Any] = [None] * len(iterator_list_value)
         try:
             if self.node_data.is_parallel:
-                futures: list[Future] = []
-                q: Queue = Queue()
                 thread_pool = GraphEngineThreadPool(
                     max_workers=self.node_data.parallel_nums, max_submit_count=dify_config.MAX_SUBMIT_COUNT
                 )
-                for index, item in enumerate(iterator_list_value):
-                    future: Future = thread_pool.submit(
-                        self._run_single_iter_parallel,
-                        flask_app=current_app._get_current_object(),  # type: ignore
-                        q=q,
-                        context=contextvars.copy_context(),
-                        iterator_list_value=iterator_list_value,
-                        inputs=inputs,
-                        outputs=outputs,
-                        start_at=start_at,
-                        graph_engine=graph_engine,
-                        iteration_graph=iteration_graph,
-                        index=index,
-                        item=item,
-                        iter_run_map=iter_run_map,
-                    )
-                    future.add_done_callback(thread_pool.task_done_callback)
-                    futures.append(future)
-                succeeded_count = 0
-                while True:
-                    try:
-                        event = q.get(timeout=1)
-                        if event is None:
-                            break
-                        if isinstance(event, IterationRunNextEvent):
-                            succeeded_count += 1
-                            if succeeded_count == len(futures):
-                                q.put(None)
-                        yield event
-                        if isinstance(event, RunCompletedEvent):
-                            q.put(None)
-                            for f in futures:
-                                if not f.done():
-                                    f.cancel()
-                            yield event
-                        if isinstance(event, IterationRunFailedEvent):
-                            q.put(None)
-                            yield event
-                    except Empty:
-                        continue
+                # Process iterator_list_value in batches
+                batch_size = dify_config.MAX_SUBMIT_COUNT // self.node_data.parallel_nums * self.node_data.parallel_nums
+                for i in range(0, len(iterator_list_value), batch_size):
+                    batch = iterator_list_value[i:i + batch_size]
+                    batch_futures: list[Future] = []
+                    batch_q: Queue = Queue()
+                    
+                    for index, item in enumerate(batch, start=i):
+                        future: Future = thread_pool.submit(
+                            self._run_single_iter_parallel,
+                            flask_app=current_app._get_current_object(),  # type: ignore
+                            q=batch_q,
+                            context=contextvars.copy_context(),
+                            iterator_list_value=iterator_list_value,
+                            inputs=inputs,
+                            outputs=outputs,
+                            start_at=start_at,
+                            graph_engine=graph_engine,
+                            iteration_graph=iteration_graph,
+                            index=index,
+                            item=item,
+                            iter_run_map=iter_run_map,
+                        )
+                        future.add_done_callback(thread_pool.task_done_callback)
+                        batch_futures.append(future)
 
-                # wait all threads
-                wait(futures)
+                    succeeded_count = 0
+                    while True:
+                        try:
+                            event = batch_q.get(timeout=1)
+                            if event is None:
+                                break
+                            if isinstance(event, IterationRunNextEvent):
+                                succeeded_count += 1
+                                if succeeded_count == len(batch_futures):
+                                    batch_q.put(None)
+                            yield event
+                            if isinstance(event, RunCompletedEvent):
+                                batch_q.put(None)
+                                for f in batch_futures:
+                                    if not f.done():
+                                        f.cancel()
+                                yield event
+                            if isinstance(event, IterationRunFailedEvent):
+                                batch_q.put(None)
+                                yield event
+                        except Empty:
+                            continue
+                    # Wait for current batch to complete before processing next batch
+                    wait(batch_futures)
             else:
                 for _ in range(len(iterator_list_value)):
                     yield from self._run_single_iter(

@@ -14,12 +14,15 @@ import {
   RiFile4Line,
   RiMessage3Line,
   RiRobot3Line,
+  RiGroupLine,
+  RiLayoutGridLine,
 } from '@remixicon/react'
 import AppCard from './AppCard'
 import NewAppCard from './NewAppCard'
 import useAppsQueryState from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import type { AppListResponse } from '@/models/app'
+import type { App } from '@/types/app'
 import { fetchAppList } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -32,6 +35,7 @@ import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
+import cn from '@/utils/classnames'
 
 const getKey = (
   pageIndex: number,
@@ -62,6 +66,7 @@ const Apps = () => {
   const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
+  const tagStore = useTagStore()
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'all',
   })
@@ -69,6 +74,8 @@ const Apps = () => {
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [searchKeywords, setSearchKeywords] = useState(keywords)
+  const [isGroupView, setIsGroupView] = useState(true)
+
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
@@ -166,6 +173,34 @@ const Apps = () => {
     setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
   }, [isCreatedByMe, setQuery])
 
+  // 对应用按标签分组的函数
+  const groupAppsByTags = (apps: App[]) => {
+    const groups: { [key: string]: App[] } = {
+      noTag: [] // 用于存放没有标签的应用
+    }
+    
+    // Sort apps by title first
+    const sortedApps = [...apps].sort((a, b) => a.name.localeCompare(b.name))
+    
+    sortedApps.forEach(app => {
+      if (!app.tags || app.tags.length === 0) {
+        groups.noTag.push(app)
+      } else {
+        app.tags.forEach(tag => {
+          if (!groups[tag.id]) {
+            groups[tag.id] = []
+          }
+          groups[tag.id].push(app)
+        })
+      }
+    })
+    
+    return groups
+  }
+
+  // 合并所有页面的应用数据
+  const allApps = data?.flatMap((page: AppListResponse) => page.data) || []
+
   return (
     <>
       <div ref={containerRef} className='relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body'>
@@ -174,12 +209,32 @@ const Apps = () => {
           </div>
         )}
 
-        <div className='sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]'>
-          <TabSliderNew
-            value={activeTab}
-            onChange={setActiveTab}
-            options={options}
-          />
+      <div className='sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]'>
+        <TabSliderNew
+          value={activeTab}
+          onChange={setActiveTab}
+          options={options}
+        />
+        <div className='flex items-center gap-2'>
+          <button
+            className={cn(
+              'flex h-8 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-gray-200 px-2 text-sm',
+              isGroupView ? 'bg-primary-50 text-primary-600' : 'bg-white text-gray-700'
+            )}
+            onClick={() => setIsGroupView(!isGroupView)}
+          >
+            {isGroupView ? (
+              <>
+                <RiGroupLine className='h-4 w-4' />
+                {t('app.groupView')}
+              </>
+            ) : (
+              <>
+                <RiLayoutGridLine className='h-4 w-4' />
+                {t('app.gridView')}
+              </>
+            )}
+          </button>
           <div className='flex items-center gap-2'>
             <CheckboxWithLabel
               className='mr-2'
@@ -198,37 +253,70 @@ const Apps = () => {
             />
           </div>
         </div>
-        {(data && data[0].total > 0)
-          ? <div className='relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
-            {isCurrentWorkspaceEditor
-              && <NewAppCard ref={newAppCardRef} onSuccess={mutate} />}
-            {data.map(({ data: apps }) => apps.map(app => (
+      </div>
+      {(data && data[0].total > 0) ? (
+        isGroupView ? (
+          <div className='relative px-12 pt-2'>
+            {(() => {
+              const groupedApps = groupAppsByTags(allApps)
+              console.log(groupedApps)
+              // Sort tag groups by their names
+              const sortedTagGroups = Object.entries(groupedApps).sort(([tagIdA, appsA], [tagIdB, appsB]) => {
+                const nameA = tagIdA === 'noTag' ? t('app.noTag') : tagStore.tagList.find(t => t.id === tagIdA)?.name || tagIdA
+                const nameB = tagIdB === 'noTag' ? t('app.noTag') : tagStore.tagList.find(t => t.id === tagIdB)?.name || tagIdB
+                return nameA.localeCompare(nameB)
+              })
+              
+              return sortedTagGroups.map(([tagId, apps]) => {
+                const tagName = tagId === 'noTag' 
+                  ? t('app.noTag') 
+                  : tagStore.tagList.find(t => t.id === tagId)?.name || tagId
+                return apps.length > 0 && (
+                  <div key={tagId} className='mb-8'>
+                    <div className='mb-4 text-lg font-medium text-gray-900'>{tagName}</div>
+                    <div className='grid grid-cols-1 gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
+                      {isCurrentWorkspaceEditor && tagId === Object.keys(groupedApps)[0] && (
+                        <NewAppCard ref={newAppCardRef} onSuccess={mutate} />
+                      )}
+                      {apps.map(app => (
+                        <AppCard key={app.id} app={app} onRefresh={mutate} />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })
+            })()}
+          </div>
+        ) : (
+          <div className='relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
+            {isCurrentWorkspaceEditor && <NewAppCard ref={newAppCardRef} onSuccess={mutate} />}
+            {data.map(({ data: apps }) => [...apps].sort((a, b) => a.name.localeCompare(b.name)).map(app => (
               <AppCard key={app.id} app={app} onRefresh={mutate} />
             )))}
           </div>
-          : <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
-            {isCurrentWorkspaceEditor
-              && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={mutate} />}
-            <NoAppsFound />
-          </div>}
-
-        {isCurrentWorkspaceEditor && (
-          <div
-            className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
-            role="region"
-            aria-label={t('app.newApp.dropDSLToCreateApp')}
-          >
-            <RiDragDropLine className="h-4 w-4" />
-            <span className="system-xs-regular">{t('app.newApp.dropDSLToCreateApp')}</span>
-          </div>
-        )}
-        <CheckModal />
-        <div ref={anchorRef} className='h-0'> </div>
-        {showTagManagementModal && (
-          <TagManagementModal type='app' show={showTagManagementModal} />
-        )}
+        )
+      ) : (
+        <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
+          {isCurrentWorkspaceEditor && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={mutate} />}
+          <NoAppsFound />
+        </div>
+      )}
+      {isCurrentWorkspaceEditor && (
+        <div
+          className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
+          role="region"
+          aria-label={t('app.newApp.dropDSLToCreateApp')}
+        >
+          <RiDragDropLine className="h-4 w-4" />
+          <span className="system-xs-regular">{t('app.newApp.dropDSLToCreateApp')}</span>
+        </div>
+      )}
+      <CheckModal />
+      <div ref={anchorRef} className='h-0'> </div>
+      {showTagManagementModal && (
+        <TagManagementModal type='app' show={showTagManagementModal} />
+      )}
       </div>
-
       {showCreateFromDSLModal && (
         <CreateFromDSLModal
           show={showCreateFromDSLModal}

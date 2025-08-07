@@ -22,6 +22,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
+from models.account import Account
 from models.enums import UserFrom
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import ConversationVariable, WorkflowType
@@ -135,12 +136,24 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
                 session.commit()
 
+            # Query user information for account users
+            user_name = ""
+            user_email = ""
+            if self.application_generate_entity.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}:
+                # For account users, query user info from Account table
+                user = db.session.query(Account).filter(Account.id == self.application_generate_entity.user_id).first()
+                if user:
+                    user_name = user.name
+                    user_email = user.email
+
             # Create a variable pool.
             system_inputs = {
                 SystemVariableKey.QUERY: query,
                 SystemVariableKey.FILES: files,
                 SystemVariableKey.CONVERSATION_ID: self.conversation.id,
                 SystemVariableKey.USER_ID: user_id,
+                SystemVariableKey.USER_NAME: user_name,
+                SystemVariableKey.USER_EMAIL: user_email,
                 SystemVariableKey.DIALOGUE_COUNT: self._dialogue_count,
                 SystemVariableKey.APP_ID: app_config.app_id,
                 SystemVariableKey.WORKFLOW_ID: app_config.workflow_id,

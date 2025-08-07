@@ -149,6 +149,7 @@ const translation = {
     newDataset: '建立知識庫',
     tools: '工具',
     exploreMarketplace: '探索 Marketplace',
+    external: '外部連結',
   },
   userProfile: {
     settings: '設定',

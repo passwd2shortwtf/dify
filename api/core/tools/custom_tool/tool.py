@@ -15,8 +15,8 @@ from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, Too
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 
 API_TOOL_DEFAULT_TIMEOUT = (
-    int(getenv("API_TOOL_DEFAULT_CONNECT_TIMEOUT", "10")),
-    int(getenv("API_TOOL_DEFAULT_READ_TIMEOUT", "60")),
+    int(getenv("API_TOOL_DEFAULT_CONNECT_TIMEOUT", "1000")),
+    int(getenv("API_TOOL_DEFAULT_READ_TIMEOUT", "6000")),
 )
 
 

@@ -42,6 +42,22 @@ const RunOnce: FC<IRunOnceProps> = ({
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
 
+  useEffect(() => {
+    const newInputs: Record<string, any> = { ...inputs }
+    promptConfig.prompt_variables.forEach((item) => {
+      if (item.type === 'string' || item.type === 'paragraph')
+        newInputs[item.key] = ''
+      else
+        newInputs[item.key] = undefined
+    })
+    promptConfig.prompt_variables.forEach((item) => {
+      if ((item.type === 'string' || item.type === 'paragraph' || item.type === 'number' || item.type === 'select') && item.default !== undefined) {
+        newInputs[item.key] = item.default
+      }
+    })
+    handleInputsChange(newInputs)
+  }, [promptConfig.prompt_variables])
+
   const onClear = () => {
     const newInputs: Record<string, any> = {}
     promptConfig.prompt_variables.forEach((item) => {
@@ -62,17 +78,6 @@ const RunOnce: FC<IRunOnceProps> = ({
     onInputsChange(newInputs)
     inputsRef.current = newInputs
   }, [onInputsChange, inputsRef])
-
-  useEffect(() => {
-    const newInputs: Record<string, any> = {}
-    promptConfig.prompt_variables.forEach((item) => {
-      if (item.type === 'string' || item.type === 'paragraph')
-        newInputs[item.key] = ''
-      else
-        newInputs[item.key] = undefined
-    })
-    onInputsChange(newInputs)
-  }, [promptConfig.prompt_variables, onInputsChange])
 
   return (
     <div className="">

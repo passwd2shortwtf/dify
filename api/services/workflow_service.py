@@ -671,11 +671,18 @@ def _setup_variable_pool(
 ):
     # Only inject system variables for START node type.
     if node_type == NodeType.START:
+        # Query user information
+        user = Account.query.filter(Account.id == user_id).first()
+        user_name = user.name if user else ""
+        user_email = user.email if user else ""
+        
         # Create a variable pool.
         system_inputs: dict[SystemVariableKey, Any] = {
             # From inputs:
             SystemVariableKey.FILES: files,
             SystemVariableKey.USER_ID: user_id,
+            SystemVariableKey.USER_NAME: user_name,
+            SystemVariableKey.USER_EMAIL: user_email,
             # From workflow model
             SystemVariableKey.APP_ID: workflow.app_id,
             SystemVariableKey.WORKFLOW_ID: workflow.id,

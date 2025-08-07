@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useSelectedLayoutSegments } from 'next/navigation'
@@ -13,6 +13,9 @@ import ExploreContext from '@/context/explore-context'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { InstalledApp } from '@/models/explore'
+import { ChevronRightIcon } from '@heroicons/react/24/outline'
+import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 
 const SelectedDiscoveryIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="current" xmlns="http://www.w3.org/2000/svg">
@@ -48,17 +51,136 @@ const SideBar: FC<IExploreSideBarProps> = ({
   const { t } = useTranslation()
   const segments = useSelectedLayoutSegments()
   const lastSegment = segments.slice(-1)[0]
-  const isDiscoverySelected = lastSegment === 'apps'
+  const isDiscoverySelected = false
   const isChatSelected = lastSegment === 'chat'
   const { installedApps, setInstalledApps } = useContext(ExploreContext)
+  const selectedTags = useTagStore(s => s.selectedTags)
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const fetchInstalledAppList = async () => {
-    const { installed_apps }: any = await doFetchInstalledAppList()
-    setInstalledApps(installed_apps)
+  const [sidebarWidth, setSidebarWidth] = useState(216)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
+
+  // 初始化所有标签为展开状态
+  const [expandedTags, setExpandedTags] = useState<{ [key: string]: boolean }>({
+    noTag: true  // 默认展开无标签组
+  })
+
+  const groupedApps = React.useMemo(() => {
+    const groups: { [key: string]: InstalledApp[] } = { noTag: [] }
+    
+    if (!installedApps || !Array.isArray(installedApps))
+      return groups
+
+    installedApps.forEach(app => {
+      try {
+        if (!app.tags || !Array.isArray(app.tags) || app.tags.length === 0) {
+          groups.noTag.push(app)
+        } else {
+          app.tags.forEach(tag => {
+            if (tag && tag.id) {
+              if (!groups[tag.id]) {
+                groups[tag.id] = []
+              }
+              groups[tag.id].push(app)
+            }
+          })
+        }
+      } catch (error) {
+        console.error('Error processing app:', error)
+        groups.noTag.push(app)
+      }
+    })
+
+    // Sort apps within each group by name
+    Object.keys(groups).forEach(tagId => {
+      groups[tagId].sort((a, b) => a.app.name.localeCompare(b.app.name))
+    })
+    
+    return groups
+  }, [installedApps])
+
+  // 当 selectedTags 或 groupedApps 变化时，更新展开状态
+  useEffect(() => {
+    if (!groupedApps) return
+
+    const newExpandedState = Object.keys(groupedApps).reduce((acc, tagId) => ({
+      ...acc,
+      [tagId]: selectedTags.includes(tagId) || tagId === 'noTag'  // 如果标签被选中或是无标签组，则展开
+    }), {})
+    setExpandedTags(newExpandedState)
+  }, [selectedTags, groupedApps])
+
+  const toggleTag = (tagId: string) => {
+    setExpandedTags(prev => ({
+      ...prev,
+      [tagId]: !prev[tagId]
+    }))
   }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    dragRef.current = {
+      startX: e.pageX,
+      startWidth: sidebarWidth
+    }
+    setIsDragging(true)
+  }
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragRef.current) return
+
+    const { startX, startWidth } = dragRef.current
+    const delta = e.pageX - startX
+    const newWidth = Math.max(180, Math.min(400, startWidth + delta))
+    setSidebarWidth(newWidth)
+  }, [])
+
+  const handleMouseUp = useCallback(() => {
+    dragRef.current = null
+    setIsDragging(false)
+  }, [])
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp])
+
+  const fetchInstalledAppList = async () => {
+    const response: any = await doFetchInstalledAppList()
+    console.log('Raw API response:', response)
+    
+    const installed_apps = response.installed_apps || []
+    console.log('Fetched installed apps:', installed_apps)
+    
+    const processedApps = installed_apps.map((app: any) => {
+      if (!app.tags) {
+        return { ...app, tags: [] }
+      }
+      return app
+    })
+    
+    console.log('Processed apps with tags:', processedApps)
+    setInstalledApps(processedApps)
+  }
+
+  useEffect(() => {
+    console.log('Installed apps in state:', installedApps)
+  }, [installedApps])
 
   const [showConfirm, setShowConfirm] = useState(false)
   const [currId, setCurrId] = useState('')
@@ -91,11 +213,36 @@ const SideBar: FC<IExploreSideBarProps> = ({
   }, [controlUpdateInstalledApps])
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
+
   return (
-    <div className='w-fit shrink-0 cursor-pointer border-r border-divider-burn px-4 pt-6 sm:w-[216px]'>
+    <div 
+      className='relative shrink-0 cursor-pointer border-r border-divider-burn px-4 pt-6'
+      style={{ 
+        width: isMobile ? 'fit-content' : `${sidebarWidth}px`,
+        transition: isDragging ? 'none' : 'width 0.2s ease',
+        userSelect: isDragging ? 'none' : 'auto'
+      }}
+    >
+      {!isMobile && (
+        <div
+          className='absolute -right-1 top-0 h-full w-2 cursor-col-resize hover:bg-primary-50 active:bg-primary-100 z-10'
+          onMouseDown={handleMouseDown}
+          style={{
+            cursor: 'col-resize',
+            backgroundColor: isDragging ? 'var(--primary-100)' : undefined
+          }}
+        >
+          <div 
+            className='absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-divider-burn hover:bg-primary-50'
+            style={{
+              backgroundColor: isDragging ? 'var(--primary-100)' : undefined
+            }}
+          />
+        </div>
+      )}
       <div className={cn(isDiscoverySelected ? 'text-text-accent' : 'text-text-tertiary')}>
         <Link
-          href='/explore/apps'
+          href='/explore/apps/discovery'
           className={cn(isDiscoverySelected ? ' bg-components-main-nav-nav-button-bg-active' : 'font-medium hover:bg-state-base-hover',
             'flex h-9 items-center gap-2 rounded-lg px-3 mobile:w-fit mobile:justify-center mobile:px-2 pc:w-full pc:justify-start')}
           style={isDiscoverySelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
@@ -112,28 +259,100 @@ const SideBar: FC<IExploreSideBarProps> = ({
               height: 'calc(100vh - 250px)',
             }}
           >
-            {installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
-              <React.Fragment key={id}>
-                <Item
-                  isMobile={isMobile}
-                  name={name}
-                  icon_type={icon_type}
-                  icon={icon}
-                  icon_background={icon_background}
-                  icon_url={icon_url}
-                  id={id}
-                  isSelected={lastSegment?.toLowerCase() === id}
-                  isPinned={is_pinned}
-                  togglePin={() => handleUpdatePinStatus(id, !is_pinned)}
-                  uninstallable={uninstallable}
-                  onDelete={(id) => {
-                    setCurrId(id)
-                    setShowConfirm(true)
-                  }}
-                />
-                {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && <Divider />}
-              </React.Fragment>
-            ))}
+            {Object.entries(groupedApps)
+              .filter(([tagId]) => tagId !== 'noTag')
+              .sort(([tagIdA, appsA], [tagIdB, appsB]) => {
+                const nameA = appsA.length > 0 
+                  ? (appsA[0].tags.find(t => t.id === tagIdA)?.name || tagIdA)
+                  : tagIdA
+                const nameB = appsB.length > 0 
+                  ? (appsB[0].tags.find(t => t.id === tagIdB)?.name || tagIdB)
+                  : tagIdB
+                return nameA.localeCompare(nameB)
+              })
+              .map(([tagId, apps]) => {
+                let tagName = t('explore.sidebar.noTag')
+                
+                if (apps.length > 0) {
+                  const tag = apps[0].tags.find(t => t.id === tagId)
+                  if (tag) {
+                    tagName = tag.name
+                  } else {
+                    tagName = tagId
+                  }
+                }
+                
+                console.log(`Rendering tag group: ${tagId}, name: ${tagName}, apps count: ${apps.length}`)
+
+                return (
+                  <div key={tagId} className='mb-2'>
+                    <div
+                      className='flex items-center justify-between px-2 py-1 cursor-pointer hover:bg-gray-100 rounded'
+                      onClick={() => toggleTag(tagId)}
+                    >
+                      <span className='text-sm font-medium text-gray-700'>{tagName}</span>
+                      <ChevronRightIcon
+                        className={`w-4 h-4 text-gray-500 transition-transform ${
+                          expandedTags[tagId] ? 'transform rotate-90' : ''
+                        }`}
+                      />
+                    </div>
+                    {expandedTags[tagId] && (
+                      <div className='ml-4'>
+                        {apps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
+                          <React.Fragment key={id}>
+                            <Item
+                              isMobile={isMobile}
+                              name={name}
+                              icon_type={icon_type}
+                              icon={icon}
+                              icon_background={icon_background}
+                              icon_url={icon_url}
+                              id={id}
+                              isSelected={lastSegment?.toLowerCase() === id}
+                              isPinned={is_pinned}
+                              togglePin={() => handleUpdatePinStatus(id, !is_pinned)}
+                              uninstallable={uninstallable}
+                              onDelete={(id) => {
+                                setCurrId(id)
+                                setShowConfirm(true)
+                              }}
+                            />
+                            {index === pinnedAppsCount - 1 && index !== apps.length - 1 && <Divider />}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+            {groupedApps.noTag && groupedApps.noTag.length > 0 && (
+              <div className='mt-4'>
+                {groupedApps.noTag.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
+                  <React.Fragment key={id}>
+                    <Item
+                      isMobile={isMobile}
+                      name={name}
+                      icon_type={icon_type}
+                      icon={icon}
+                      icon_background={icon_background}
+                      icon_url={icon_url}
+                      id={id}
+                      isSelected={lastSegment?.toLowerCase() === id}
+                      isPinned={is_pinned}
+                      togglePin={() => handleUpdatePinStatus(id, !is_pinned)}
+                      uninstallable={uninstallable}
+                      onDelete={(id) => {
+                        setCurrId(id)
+                        setShowConfirm(true)
+                      }}
+                    />
+                    {index === pinnedAppsCount - 1 && index !== groupedApps.noTag.length - 1 && <Divider />}
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

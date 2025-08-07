@@ -255,6 +255,17 @@ export const VAR_REGEX = /\{\{(#[a-zA-Z0-9_-]{1,50}(\.[a-zA-Z_]\w{0,29}){1,10}#)
 
 export const resetReg = () => VAR_REGEX.lastIndex = 0
 
+export let textGenerationTimeoutMs = 604800 * 1000 // 7 days
+
+if (process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS && process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS !== '')
+  textGenerationTimeoutMs = Number.parseInt(process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS)
+else if (globalThis.document?.body?.getAttribute('data-public-text-generation-timeout-ms') && globalThis.document.body.getAttribute('data-public-text-generation-timeout-ms') !== '')
+  textGenerationTimeoutMs = Number.parseInt(globalThis.document.body.getAttribute('data-public-text-generation-timeout-ms') as string)
+
+textGenerationTimeoutMs = 604800 * 1000 // 7 days
+
+export const TEXT_GENERATION_TIMEOUT_MS = textGenerationTimeoutMs
+
 export const DISABLE_UPLOAD_IMAGE_AS_ICON = process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON === 'true'
 
 export const GITHUB_ACCESS_TOKEN = process.env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN || ''
@@ -265,7 +276,7 @@ export const FULL_DOC_PREVIEW_LENGTH = 50
 export const JSON_SCHEMA_MAX_DEPTH = 10
 
 export const MAX_TOOLS_NUM = getNumberConfig(process.env.NEXT_PUBLIC_MAX_TOOLS_NUM, DatasetAttr.DATA_PUBLIC_MAX_TOOLS_NUM, 10)
-export const TEXT_GENERATION_TIMEOUT_MS = getNumberConfig(process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS, DatasetAttr.DATA_PUBLIC_TEXT_GENERATION_TIMEOUT_MS, 60000)
+// export const TEXT_GENERATION_TIMEOUT_MS = getNumberConfig(process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS, DatasetAttr.DATA_PUBLIC_TEXT_GENERATION_TIMEOUT_MS, 60000)
 export const LOOP_NODE_MAX_COUNT = getNumberConfig(process.env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT, DatasetAttr.DATA_PUBLIC_LOOP_NODE_MAX_COUNT, 100)
 export const MAX_ITERATIONS_NUM = getNumberConfig(process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM, DatasetAttr.DATA_PUBLIC_MAX_ITERATIONS_NUM, 99)
 export const MAX_TREE_DEPTH = getNumberConfig(process.env.NEXT_PUBLIC_MAX_TREE_DEPTH, DatasetAttr.DATA_PUBLIC_MAX_TREE_DEPTH, 50)

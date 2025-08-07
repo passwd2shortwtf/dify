@@ -383,8 +383,8 @@ class ModelInstance:
                     del kwargs["credentials"]
                 return function(*args, **kwargs, credentials=lb_config.credentials)
             except InvokeRateLimitError as e:
-                # expire in 60 seconds
-                self.load_balancing_manager.cooldown(lb_config, expire=60)
+                # expire in 10 seconds
+                self.load_balancing_manager.cooldown(lb_config, expire=10)
                 last_exception = e
                 continue
             except (InvokeAuthorizationError, InvokeConnectionError) as e:

@@ -6,6 +6,7 @@ import {
   RiArrowRightSLine,
   RiErrorWarningFill,
   RiLoader2Line,
+  RiStopCircleLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type { ChatItem, WorkflowProcess } from '../../types'
@@ -21,6 +22,8 @@ type WorkflowProcessProps = {
   hideInfo?: boolean
   hideProcessDetail?: boolean
   readonly?: boolean
+  showStop?: boolean
+  onStop?: () => void
 }
 const WorkflowProcessItem = ({
   data,
@@ -28,6 +31,8 @@ const WorkflowProcessItem = ({
   hideInfo = false,
   hideProcessDetail = false,
   readonly = false,
+  showStop = false,
+  onStop,
 }: WorkflowProcessProps) => {
   const { t } = useTranslation()
   const [collapse, setCollapse] = useState(!expand)
@@ -72,6 +77,16 @@ const WorkflowProcessItem = ({
         <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
           {t('workflow.common.workflowProcess')}
         </div>
+        {running && showStop && (
+          <button
+            className='ml-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-black/5'
+            onClick={e => { e.stopPropagation(); onStop && onStop(); }}
+            title={t('appDebug.action.stop')}
+            type='button'
+          >
+            <RiStopCircleLine className='h-4 w-4 text-components-button-ghost-text' />
+          </button>
+        )}
         {!readonly && <RiArrowRightSLine className={cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />}
       </div>
       {

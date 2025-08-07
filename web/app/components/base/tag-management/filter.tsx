@@ -33,6 +33,7 @@ const TagFilter: FC<TagFilterProps> = ({
 
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
+  const setSelectedTags = useTagStore(s => s.setSelectedTags)
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -53,10 +54,15 @@ const TagFilter: FC<TagFilterProps> = ({
   }, [value, tagList])
 
   const selectTag = (tag: Tag) => {
-    if (value.includes(tag.id))
-      onChange(value.filter(v => v !== tag.id))
-    else
-      onChange([...value, tag.id])
+    if (value.includes(tag.id)) {
+      const newValue = value.filter(v => v !== tag.id)
+      onChange(newValue)
+      setSelectedTags(newValue)
+    } else {
+      const newValue = [...value, tag.id]
+      onChange(newValue)
+      setSelectedTags(newValue)
+    }
   }
 
   useMount(() => {

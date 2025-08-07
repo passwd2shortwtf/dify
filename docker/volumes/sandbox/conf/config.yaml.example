@@ -4,7 +4,7 @@ app:
   key: dify-sandbox
 max_workers: 4
 max_requests: 50
-worker_timeout: 5
+worker_timeout: 36000
 python_path: /usr/local/bin/python3
 python_lib_path:
   - /usr/local/lib/python3.10

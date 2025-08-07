@@ -159,6 +159,7 @@ const translation = {
     newApp: 'New App',
     newDataset: 'Create Knowledge',
     tools: 'Tools',
+    external: 'External Links',
   },
   userProfile: {
     settings: 'Settings',
@@ -435,7 +436,7 @@ const translation = {
     addConfig: 'Add Config',
     editConfig: 'Edit Config',
     loadBalancingLeastKeyWarning: 'To enable load balancing at least 2 keys must be enabled.',
-    loadBalancingInfo: 'By default, load balancing uses the Round-robin strategy. If rate limiting is triggered, a 1-minute cooldown period will be applied.',
+    loadBalancingInfo: 'By default, load balancing uses the Round-robin strategy. If rate limiting is triggered, a 10-second cooldown period will be applied.',
     upgradeForLoadBalancing: 'Upgrade your plan to enable Load Balancing.',
     toBeConfigured: 'To be configured',
     configureTip: 'Set up api-key or add model to use',

@@ -308,7 +308,8 @@ export const useWorkflowRun = () => {
 
   const handleStopRun = useCallback((taskId: string) => {
     const appId = useAppStore.getState().appDetail?.id
-
+    console.log('appId~~~~~~~~~~~~~~~~~！！！！！！！！！！！！！', appId)
+    console.log('taskId~~~~~~~~~~~~~~~~~！！！！！！！！！！！！！', taskId)
     stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
   }, [])
 

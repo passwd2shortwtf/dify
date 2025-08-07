@@ -159,6 +159,7 @@ const translation = {
     newDataset: 'ナレッジの作成',
     tools: 'ツール',
     exploreMarketplace: 'マーケットプレイスを探索する',
+    external: '外部リンク',
   },
   userProfile: {
     settings: '設定',

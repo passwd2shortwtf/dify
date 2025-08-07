@@ -21,6 +21,10 @@ import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
+import type { WorkflowLogEntry } from '@/app/components/workflow/workflow-log'
+import WorkflowLog from '@/app/components/workflow/workflow-log'
+import { RiStopCircleLine } from '@remixicon/react'
+import { stopWorkflowRun } from '@/service/workflow'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -91,6 +95,7 @@ const Result: FC<IResultProps> = ({
     doSetWorkflowProcessData(data)
   }
   const getWorkflowProcessData = () => workflowProcessDataRef.current
+  const [workflowLogs, setWorkflowLogs] = useState<WorkflowLogEntry[]>([])
 
   const { notify } = Toast
   const isNoData = !completionRes
@@ -99,6 +104,7 @@ const Result: FC<IResultProps> = ({
   const [feedback, setFeedback] = useState<FeedbackType>({
     rating: null,
   })
+  const [currentTaskId, setCurrentTaskId] = useState<string | undefined>(undefined)
 
   const handleFeedback = async (feedback: FeedbackType) => {
     await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
@@ -198,18 +204,31 @@ const Result: FC<IResultProps> = ({
       }
     })()
 
+    const addWorkflowLog = (type: WorkflowLogEntry['type'], message: string, nodeId?: string, nodeName?: string, iterationNumber?: number) => {
+      setWorkflowLogs(prev => [...prev, {
+        timestamp: Date.now(),
+        type,
+        message,
+        nodeId,
+        nodeName,
+        iterationNumber,
+      }])
+    }
+
     if (isWorkflow) {
       sendWorkflowMessage(
         data,
         {
-          onWorkflowStarted: ({ workflow_run_id }) => {
+          onWorkflowStarted: ({ workflow_run_id, task_id }) => {
             tempMessageId = workflow_run_id
+            setCurrentTaskId(task_id)
             setWorkflowProcessData({
               status: WorkflowRunningStatus.Running,
               tracing: [],
               expand: false,
               resultText: '',
             })
+            addWorkflowLog('info', '工作流开始执行')
           },
           onIterationStart: ({ data }) => {
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
@@ -220,14 +239,16 @@ const Result: FC<IResultProps> = ({
                 expand: true,
               })
             }))
+            addWorkflowLog('info', '开始迭代', data.node_id, data.title)
           },
-          onIterationNext: () => {
+          onIterationNext: ({ data: iterationData }) => {
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
               draft.expand = true
               const iterations = draft.tracing.find(item => item.node_id === data.node_id
                 && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
               iterations?.details!.push([])
             }))
+            addWorkflowLog('info', '进入下一次迭代', iterationData.node_id, iterationData.title, iterationData.index)
           },
           onIterationFinish: ({ data }) => {
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
@@ -249,14 +270,16 @@ const Result: FC<IResultProps> = ({
                 expand: true,
               })
             }))
+            addWorkflowLog('info', '开始循环', data.node_id, data.title)
           },
-          onLoopNext: () => {
+          onLoopNext: ({ data : loopData }) => {
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
               draft.expand = true
               const loops = draft.tracing.find(item => item.node_id === data.node_id
                 && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
               loops?.details!.push([])
             }))
+            addWorkflowLog('info', '进入下一次循环', loopData.node_id, loopData.title, loopData.index)
           },
           onLoopFinish: ({ data }) => {
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
@@ -270,10 +293,7 @@ const Result: FC<IResultProps> = ({
             }))
           },
           onNodeStarted: ({ data }) => {
-            if (data.iteration_id)
-              return
-
-            if (data.loop_id)
+            if (data.iteration_id || data.loop_id)
               return
 
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
@@ -284,31 +304,39 @@ const Result: FC<IResultProps> = ({
                 expand: true,
               })
             }))
+            addWorkflowLog('info', '节点开始执行', data.node_id, data.title)
           },
           onNodeFinished: ({ data }) => {
-            if (data.iteration_id)
-              return
-
-            if (data.loop_id)
+            if (data.iteration_id || data.loop_id)
               return
 
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id
-                && (trace.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || trace.parallel_id === data.execution_metadata?.parallel_id))
+              const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id)
               if (currentIndex > -1 && draft.tracing) {
+                console.log('onNodeFinished data~~~~~~~~~~~~~~~~~', data)
                 draft.tracing[currentIndex] = {
-                  ...(draft.tracing[currentIndex].extras
-                    ? { extras: draft.tracing[currentIndex].extras }
-                    : {}),
                   ...data,
                   expand: !!data.error,
                 }
               }
             }))
+            const isStringOutput = Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+            if (isStringOutput) {
+              setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+                draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+              }))
+            }
+            addWorkflowLog(
+              data.error ? 'error' : 'success',
+              data.error || '节点执行完成',
+              data.node_id,
+              data.title
+            )
           },
           onWorkflowFinished: ({ data }) => {
             if (isTimeout) {
               notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
+              addWorkflowLog('warning', '工作流执行超时')
               return
             }
             if (data.error) {
@@ -316,6 +344,7 @@ const Result: FC<IResultProps> = ({
               setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
                 draft.status = WorkflowRunningStatus.Failed
               }))
+              addWorkflowLog('error', `工作流执行失败: ${data.error}`)
               setRespondingFalse()
               onCompleted(getCompletionRes(), taskId, false)
               isEnd = true
@@ -325,6 +354,7 @@ const Result: FC<IResultProps> = ({
               draft.status = WorkflowRunningStatus.Succeeded
               draft.files = getFilesInLogs(data.outputs || []) as any[]
             }))
+            addWorkflowLog('success', '工作流执行完成')
             if (!data.outputs) {
               setCompletionRes('')
             }
@@ -406,6 +436,22 @@ const Result: FC<IResultProps> = ({
       handleSend()
   }, [controlRetry])
 
+  const handleStopRun = async () => {
+    if (!isWorkflow || !isResponding) return
+    
+    try {
+      const appId = installedAppInfo?.app?.id || ''
+      console.log('appId~~~~~~~~~~~~~~~~~', appId)
+      console.log('taskId~~~~~~~~~~~~~~~~~', currentTaskId)
+      await stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${currentTaskId}/stop`)
+      setRespondingFalse()
+      onCompleted(getCompletionRes(), currentTaskId, false)
+      notify({ type: 'info', message: t('appDebug.infoMessage.workflowStopped') })
+    } catch (error) {
+      notify({ type: 'error', message: t('appDebug.errorMessage.failedToStopWorkflow') })
+    }
+  }
+
   const renderTextGenerationRes = () => (
     <TextGenerationRes
       isWorkflow={isWorkflow}
@@ -428,6 +474,8 @@ const Result: FC<IResultProps> = ({
       isShowTextToSpeech={isShowTextToSpeech}
       hideProcessDetail
       siteInfo={siteInfo}
+      onStop={handleStopRun}
+      showStop={isWorkflow && isResponding}
     />
   )
 
@@ -449,15 +497,25 @@ const Result: FC<IResultProps> = ({
           )
       )}
       {!isCallBatchAPI && isWorkflow && (
-        (isResponding && !workflowProcessData)
-          ? (
-            <div className='flex h-full w-full items-center justify-center'>
-              <Loading type='area' />
+        <div className="flex flex-col h-full">
+          <div className="flex-1">
+            {(isResponding && !workflowProcessData)
+              ? (
+                <div className='flex h-full w-full items-center justify-center'>
+                  <Loading type='area' />
+                </div>
+              )
+              : !workflowProcessData
+                ? <NoData />
+                : renderTextGenerationRes()
+            }
+          </div>
+          {isResponding && workflowProcessData && (
+            <div className="h-64 border-t border-gray-200">
+              <WorkflowLog logs={workflowLogs} />
             </div>
-          )
-          : !workflowProcessData
-            ? <NoData />
-            : renderTextGenerationRes()
+          )}
+        </div>
       )}
       {isCallBatchAPI && renderTextGenerationRes()}
     </>

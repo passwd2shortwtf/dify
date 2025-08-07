@@ -13,6 +13,9 @@ import { fetchRunDetail, fetchTracingList } from '@/service/log'
 import type { NodeTracing } from '@/types/workflow'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { stopWorkflowRun } from '@/service/workflow'
+import { useStore } from '@/app/components/workflow/store'
+
 export type RunProps = {
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
@@ -25,6 +28,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
   const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
   const appDetail = useAppStore(state => state.appDetail)
+  const workflowRunningData = useStore(state => state.workflowRunningData)
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
@@ -163,6 +167,24 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
             className='bg-background-section-burn'
             list={list}
           />
+        )}
+        {runDetail?.status === 'running' && (
+          <div className='sticky bottom-0 flex justify-end p-4 bg-components-panel-bg border-t border-gray-200'>
+            <button
+              onClick={async () => {
+                try {
+                  await stopWorkflowRun(`/apps/${appDetail?.id}/workflow-runs/tasks/${workflowRunningData?.task_id}/stop`)
+                  notify({ type: 'info', message: t('appDebug.infoMessage.workflowStopped') })
+                } catch (error) {
+                  console.error('Failed to stop workflow:', error)
+                  notify({ type: 'error', message: t('appDebug.errorMessage.failedToStopWorkflow') })
+                }
+              }}
+              className='inline-flex items-center justify-center rounded-md bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2'
+            >
+              {t('common.stop')}
+            </button>
+          </div>
         )}
       </div>
     </div>

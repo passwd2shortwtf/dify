@@ -200,6 +200,7 @@ export type InputVar = {
   default?: string
   required: boolean
   hint?: string
+  display_group?: string
   options?: string[]
   value_selector?: ValueSelector
   getVarValueFromDependent?: boolean

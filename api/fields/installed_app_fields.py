@@ -1,6 +1,7 @@
 from flask_restful import fields
 
 from libs.helper import AppIconUrlField, TimestampField
+from fields.tag_fields import tag_fields
 
 app_fields = {
     "id": fields.String,
@@ -11,6 +12,7 @@ app_fields = {
     "icon_background": fields.String,
     "icon_url": AppIconUrlField,
     "use_icon_as_answer_icon": fields.Boolean,
+    "description": fields.String,
 }
 
 installed_app_fields = {
@@ -21,6 +23,7 @@ installed_app_fields = {
     "last_used_at": TimestampField,
     "editable": fields.Boolean,
     "uninstallable": fields.Boolean,
+    "tags": fields.List(fields.Nested(tag_fields)),
 }
 
 installed_app_list_fields = {"installed_apps": fields.List(fields.Nested(installed_app_fields))}

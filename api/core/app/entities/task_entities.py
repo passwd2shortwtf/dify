@@ -351,7 +351,7 @@ class NodeFinishStreamResponse(StreamResponse):
                 "predecessor_node_id": self.data.predecessor_node_id,
                 "inputs": None,
                 "process_data": None,
-                "outputs": None,
+                "outputs": self.data.outputs,
                 "status": self.data.status,
                 "error": None,
                 "elapsed_time": self.data.elapsed_time,

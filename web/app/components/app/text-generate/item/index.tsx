@@ -61,6 +61,8 @@ export type IGenerationItemProps = {
   hideProcessDetail?: boolean
   siteInfo: SiteInfo | null
   inSidePanel?: boolean
+  onStop?: () => void
+  showStop?: boolean
 }
 
 export const copyIcon = (
@@ -95,6 +97,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   hideProcessDetail,
   siteInfo,
   inSidePanel,
+  onStop,
+  showStop,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -241,6 +245,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         hideProcessDetail={hideProcessDetail}
                         hideInfo={hideProcessDetail}
                         readonly={!siteInfo.show_workflow_steps}
+                        showStop={showStop}
+                        onStop={onStop}
                       />
                     )}
                     {showResultTabs && (

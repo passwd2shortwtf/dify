@@ -46,14 +46,14 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
                 process_data=process_data,
                 outputs=outputs,
             )
-        if not isinstance(variable, ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment):
-            error_message = (
-                f"Variable {self.node_data.variable} is not an ArrayFileSegment, ArrayNumberSegment "
-                "or ArrayStringSegment"
-            )
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
-            )
+        # if not isinstance(variable, ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment):
+        #     error_message = (
+        #         f"Variable {self.node_data.variable} is not an ArrayFileSegment, ArrayNumberSegment "
+        #         "or ArrayStringSegment"
+        #     )
+        #     return NodeRunResult(
+        #         status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
+        #     )
 
         if isinstance(variable, ArrayFileSegment):
             inputs = {"variable": [item.to_dict() for item in variable.value]}

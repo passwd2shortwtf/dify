@@ -50,6 +50,7 @@ class InstalledAppsListApi(Resource):
                 "last_used_at": installed_app.last_used_at,
                 "editable": current_user.role in {"owner", "admin"},
                 "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
+                "tags": installed_app.app.tags,
             }
             for installed_app in installed_apps
             if installed_app.app is not None

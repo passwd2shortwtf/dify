@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import Run from '@/app/components/workflow/run'
+import { WorkflowContextProvider } from '@/app/components/workflow/context'
 
 type ILogDetail = {
   runID: string
@@ -18,7 +19,9 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose }) => {
         <RiCloseLine className='h-4 w-4 text-text-tertiary' />
       </span>
       <h1 className='system-xl-semibold shrink-0 px-4 py-1 text-text-primary'>{t('appLog.runDetail.workflowTitle')}</h1>
-      <Run runID={runID}/>
+      <WorkflowContextProvider>
+        <Run runID={runID}/>
+      </WorkflowContextProvider>
     </div>
   )
 }

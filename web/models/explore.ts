@@ -1,4 +1,5 @@
 import type { AppIconType, AppMode } from '@/types/app'
+import type { Tag } from '@/app/components/base/tag-management/constant'
 export type AppBasicInfo = {
   id: string
   mode: AppMode
@@ -34,4 +35,5 @@ export type InstalledApp = {
   id: string
   uninstallable: boolean
   is_pinned: boolean
+  tags: Tag[]
 }

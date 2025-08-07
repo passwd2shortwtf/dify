@@ -114,7 +114,7 @@ class GraphEngine:
         # init thread pool
         if thread_pool_id:
             if thread_pool_id not in GraphEngine.workflow_thread_pool_mapping:
-                raise ValueError(f"Max submit count {thread_pool_max_submit_count} of workflow thread pool reached.")
+                raise ValueError(f"Max submit count {thread_pool_max_submit_count} of workflow thread pool reached. thread_pool_id: {thread_pool_id}")
 
             self.thread_pool_id = thread_pool_id
             self.thread_pool = GraphEngine.workflow_thread_pool_mapping[thread_pool_id]

@@ -84,17 +84,17 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_EXECUTION_CONNECT_TIMEOUT: Optional[float] = Field(
         description="Connection timeout in seconds for code execution requests",
-        default=10.0,
+        default=100.0,
     )
 
     CODE_EXECUTION_READ_TIMEOUT: Optional[float] = Field(
         description="Read timeout in seconds for code execution requests",
-        default=60.0,
+        default=6000.0,
     )
 
     CODE_EXECUTION_WRITE_TIMEOUT: Optional[float] = Field(
         description="Write timeout in seconds for code execution request",
-        default=10.0,
+        default=1000.0,
     )
 
     CODE_MAX_NUMBER: PositiveInt = Field(
@@ -109,7 +109,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_MAX_DEPTH: PositiveInt = Field(
         description="Maximum allowed depth for nested structures in code execution",
-        default=5,
+        default=500,
     )
 
     CODE_MAX_PRECISION: PositiveInt = Field(
@@ -119,22 +119,22 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_MAX_STRING_LENGTH: PositiveInt = Field(
         description="Maximum allowed length for strings in code execution",
-        default=80000,
+        default=8000000,
     )
 
     CODE_MAX_STRING_ARRAY_LENGTH: PositiveInt = Field(
         description="Maximum allowed length for string arrays in code execution",
-        default=30,
+        default=30000,
     )
 
     CODE_MAX_OBJECT_ARRAY_LENGTH: PositiveInt = Field(
         description="Maximum allowed length for object arrays in code execution",
-        default=30,
+        default=30000,
     )
 
     CODE_MAX_NUMBER_ARRAY_LENGTH: PositiveInt = Field(
         description="Maximum allowed length for numeric arrays in code execution",
-        default=1000,
+        default=100000,
     )
 
 
@@ -452,7 +452,7 @@ class ModelLoadBalanceConfig(BaseSettings):
 
     MODEL_LB_ENABLED: bool = Field(
         description="Enable or disable load balancing for models",
-        default=False,
+        default=True,
     )
 
     PLUGIN_BASED_TOKEN_COUNTING_ENABLED: bool = Field(

@@ -66,7 +66,7 @@ class WorkflowRunService:
         base_query = db.session.query(WorkflowRun).filter(
             WorkflowRun.tenant_id == app_model.tenant_id,
             WorkflowRun.app_id == app_model.id,
-            WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.DEBUGGING.value,
+            #WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.DEBUGGING.value,
         )
 
         if args.get("last_id"):

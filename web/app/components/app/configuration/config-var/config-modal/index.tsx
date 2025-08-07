@@ -233,6 +233,36 @@ const ConfigModal: FC<IConfigModalProps> = ({
             />
           )}
 
+          {(isStringInput || type === InputVarType.number || type === InputVarType.select) && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              {type === InputVarType.select ? (
+                <select
+                  className='w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900'
+                  value={tempPayload.default || ''}
+                  onChange={e => handlePayloadChange('default')(e.target.value)}
+                >
+                  <option value="">{t('appDebug.variableConfig.noDefault')}</option>
+                  {options?.map((option, index) => (
+                    <option key={index} value={option}>{option}</option>
+                  ))}
+                </select>
+              ) : type === InputVarType.number ? (
+                <Input
+                  type="number"
+                  value={tempPayload.default || ''}
+                  onChange={e => handlePayloadChange('default')(e.target.value)}
+                  placeholder={t('appDebug.variableConfig.defaultPlaceholder')!}
+                />
+              ) : (
+                <Input
+                  value={tempPayload.default || ''}
+                  onChange={e => handlePayloadChange('default')(e.target.value)}
+                  placeholder={t('appDebug.variableConfig.defaultPlaceholder')!}
+                />
+              )}
+            </Field>
+          )}
+
           <div className='!mt-5 flex h-6 items-center space-x-2'>
             <Checkbox checked={tempPayload.required} disabled={tempPayload.hide} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
             <span className='system-sm-semibold text-text-secondary'>{t('appDebug.variableConfig.required')}</span>
