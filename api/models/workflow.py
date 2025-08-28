@@ -513,6 +513,7 @@ class WorkflowRun(Base):
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
     exceptions_count: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"), nullable=True)
+    task_id: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
 
     @property
     def created_by_account(self):
@@ -572,6 +573,7 @@ class WorkflowRun(Base):
             "created_at": self.created_at,
             "finished_at": self.finished_at,
             "exceptions_count": self.exceptions_count,
+            "task_id": self.task_id,
         }
 
     @classmethod
@@ -597,6 +599,7 @@ class WorkflowRun(Base):
             created_at=data.get("created_at"),
             finished_at=data.get("finished_at"),
             exceptions_count=data.get("exceptions_count"),
+            task_id=data.get("task_id"),
         )
 
 

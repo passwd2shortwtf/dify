@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重构后的代码节点测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 8px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .log-container {
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .code-preview {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 重构后的代码节点测试</h1>
+        <p>测试将流式日志功能集成到现有 Code Node 的实现</p>
+
+        <!-- 重构成果验证 -->
+        <div class="test-section">
+            <h3>📋 重构成果验证</h3>
+            
+            <h4>✅ 后端重构完成</h4>
+            <ul>
+                <li><strong>CodeNodeData</strong>: 添加了 StreamingConfig 支持</li>
+                <li><strong>CodeNode._run()</strong>: 支持流式和非流式两种模式</li>
+                <li><strong>_run_sync()</strong>: 传统同步执行</li>
+                <li><strong>_run_streaming()</strong>: 流式执行，支持实时日志</li>
+            </ul>
+            
+            <div class="code-preview">
+                <strong>后端配置结构:</strong><br>
+                {<br>
+                &nbsp;&nbsp;"streaming": {<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"enabled": true,<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"buffer_timeout": 100,<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"max_log_lines": 1000<br>
+                &nbsp;&nbsp;}<br>
+                }
+            </div>
+
+            <h4>✅ 前端重构完成</h4>
+            <ul>
+                <li><strong>CodeNodeType</strong>: 添加了可选的 streaming 配置</li>
+                <li><strong>Code Panel</strong>: 集成了流式配置界面</li>
+                <li><strong>RealTimeLogs</strong>: 实时日志组件</li>
+                <li><strong>useConfig Hook</strong>: 支持流式状态管理</li>
+            </ul>
+        </div>
+
+        <!-- API测试 -->
+        <div class="test-section">
+            <h3>🔗 API功能测试</h3>
+            
+            <h4>普通API (非流式)</h4>
+            <button class="btn" onclick="testNormalAPI()">测试同步代码执行</button>
+            <span id="normalApiStatus">就绪</span>
+            
+            <h4>流式API</h4>
+            <button class="btn" onclick="testStreamingAPI()">测试流式代码执行</button>
+            <span id="streamingApiStatus">就绪</span>
+            
+            <div class="log-container" id="apiLogs">
+                <div style="color: #888;">等待API测试...</div>
+            </div>
+        </div>
+
+        <!-- 架构对比 -->
+        <div class="test-section">
+            <h3>🔧 架构对比</h3>
+            
+            <h4>🔴 重构前 (独立节点)</h4>
+            <div class="code-preview">
+                ❌ 问题:<br>
+                • 两个独立的节点类型: code + streaming-code<br>
+                • 大量重复代码和逻辑<br>
+                • 维护复杂，需要同步两套实现<br>
+                • 用户体验不统一<br>
+                • 在各个地方都需要处理两种节点类型
+            </div>
+
+            <h4>🟢 重构后 (统一节点)</h4>
+            <div class="code-preview">
+                ✅ 优势:<br>
+                • 单一节点类型: code (支持可选的流式功能)<br>
+                • 代码复用，逻辑统一<br>
+                • 易于维护和扩展<br>
+                • 用户体验一致<br>
+                • 通过配置开关控制功能
+            </div>
+        </div>
+
+        <!-- 功能特性 -->
+        <div class="test-section">
+            <h3>🌟 功能特性</h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h4>⚙️ 配置选项</h4>
+                    <ul>
+                        <li>🔘 启用/禁用实时日志</li>
+                        <li>⏱️ 缓冲超时设置 (50-5000ms)</li>
+                        <li>📄 最大日志行数 (100-10000)</li>
+                        <li>🔧 高级配置折叠面板</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4>📊 日志功能</h4>
+                    <ul>
+                        <li>📺 实时stdout/stderr显示</li>
+                        <li>🔍 日志过滤器 (全部/输出/错误)</li>
+                        <li>⏸️ 自动滚动控制</li>
+                        <li>💾 日志导出下载</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 兼容性说明 -->
+        <div class="test-section">
+            <h3>🔄 向后兼容性</h3>
+            
+            <p><strong>✅ 完全向后兼容</strong></p>
+            <ul>
+                <li>现有的 Code 节点继续正常工作</li>
+                <li>默认情况下流式功能关闭</li>
+                <li>用户可以选择性启用流式日志</li>
+                <li>所有现有工作流无需修改</li>
+                <li>API接口保持不变</li>
+            </ul>
+        </div>
+
+        <!-- 使用指南 -->
+        <div class="test-section">
+            <h3>📖 使用指南</h3>
+            
+            <h4>在工作流编辑器中使用</h4>
+            <ol>
+                <li><strong>添加Code节点</strong> - 正常添加代码执行节点</li>
+                <li><strong>编写代码</strong> - 设置代码语言和编写逻辑</li>
+                <li><strong>启用流式日志</strong> - 在配置面板中开启"启用实时日志"</li>
+                <li><strong>配置参数</strong> - 调整缓冲超时和日志行数(可选)</li>
+                <li><strong>运行工作流</strong> - 实时查看代码执行日志</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // 日志容器
+        function addLog(message, type = 'info') {
+            const container = document.getElementById('apiLogs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logClass = type === 'error' ? 'color: #ff6b6b;' : 
+                           type === 'success' ? 'color: #51cf66;' : 
+                           'color: #ffffff;';
+            
+            container.innerHTML += `<div style="${logClass}">[${timestamp}] ${message}</div>`;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // 测试普通API
+        async function testNormalAPI() {
+            const statusEl = document.getElementById('normalApiStatus');
+            statusEl.innerHTML = '<span class="status">测试中...</span>';
+            
+            addLog('开始测试普通同步API...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:8194/v1/sandbox/run', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Api-Key': 'dify-sandbox'
+                    },
+                    body: JSON.stringify({
+                        language: 'python3',
+                        code: 'print("Hello from normal API!")\nresult = 42\nprint(f"计算结果: {result}")',
+                        preload: '',
+                        enable_network: false
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    statusEl.innerHTML = '<span class="status success">✅ 成功</span>';
+                    addLog('普通API测试成功!', 'success');
+                    addLog(`输出: ${result.data?.stdout || '无输出'}`, 'info');
+                } else {
+                    throw new Error(result.message || `HTTP ${response.status}`);
+                }
+                
+            } catch (error) {
+                statusEl.innerHTML = '<span class="status error">❌ 失败</span>';
+                addLog(`普通API测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 测试流式API
+        async function testStreamingAPI() {
+            const statusEl = document.getElementById('streamingApiStatus');
+            statusEl.innerHTML = '<span class="status">测试中...</span>';
+            
+            addLog('开始测试流式API...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:8194/v1/sandbox/run_streaming', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Api-Key': 'dify-sandbox'
+                    },
+                    body: JSON.stringify({
+                        language: 'python3',
+                        code: `
+import time
+import sys
+
+print("开始流式执行测试...", flush=True)
+for i in range(3):
+    print(f"执行步骤 {i+1}/3", flush=True)
+    time.sleep(0.8)
+
+print("✅ 流式执行完成!", flush=True)
+print("这是一个错误示例", file=sys.stderr, flush=True)
+                        `,
+                        preload: '',
+                        enable_network: false
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                statusEl.innerHTML = '<span class="status">📡 接收中...</span>';
+                addLog('正在接收流式数据...', 'info');
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.trim()) {
+                            if (line.startsWith('event:')) {
+                                // 事件类型行
+                            } else if (line.startsWith('data:')) {
+                                try {
+                                    const data = JSON.parse(line.substring(5));
+                                    if (data.type) {
+                                        const logType = data.type === 'stderr' ? 'error' : 'success';
+                                        addLog(`[${data.type.toUpperCase()}] ${data.content}`, logType);
+                                    } else {
+                                        addLog(`[事件] ${JSON.stringify(data)}`, 'info');
+                                    }
+                                } catch (e) {
+                                    addLog(`[原始] ${line.substring(5)}`, 'info');
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                statusEl.innerHTML = '<span class="status success">✅ 成功</span>';
+                addLog('流式API测试完成!', 'success');
+                
+            } catch (error) {
+                statusEl.innerHTML = '<span class="status error">❌ 失败</span>';
+                addLog(`流式API测试失败: ${error.message}`, 'error');
+                
+                if (error.message.includes('fetch')) {
+                    addLog('💡 提示: 请确保sandbox服务正在运行 (localhost:8194)', 'info');
+                }
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('🎉 重构后的代码节点测试页面已加载', 'success');
+            addLog('📋 重构成果:', 'info');
+            addLog('  • 统一的代码节点支持流式和非流式执行', 'info');
+            addLog('  • 消除了代码重复和维护复杂性', 'info');
+            addLog('  • 向后兼容现有工作流', 'info');
+            addLog('  • 用户可以选择性启用流式功能', 'info');
+            addLog('准备进行API测试...', 'info');
+        });
+    </script>
+</body>
+</html>

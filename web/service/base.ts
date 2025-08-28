@@ -6,6 +6,7 @@ import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@
 import type { VisionFile } from '@/types/app'
 import type {
   AgentLogResponse,
+  ExecutionLogResponse,
   IterationFinishedResponse,
   IterationNextResponse,
   IterationStartedResponse,
@@ -62,6 +63,7 @@ export type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
 export type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
 export type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
 export type IOnAgentLog = (agentLog: AgentLogResponse) => void
+export type IOnExecutionLog = (executionLog: ExecutionLogResponse) => void
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
@@ -97,6 +99,7 @@ export type IOtherOptions = {
   onLoopNext?: IOnLoopNext
   onLoopFinish?: IOnLoopFinished
   onAgentLog?: IOnAgentLog
+  onExecutionLog?: IOnExecutionLog
 }
 
 function unicodeToChar(text: string) {
@@ -152,6 +155,7 @@ const handleStream = (
   onTTSEnd?: IOnTTSEnd,
   onTextReplace?: IOnTextReplace,
   onAgentLog?: IOnAgentLog,
+  onExecutionLog?: IOnExecutionLog,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -256,7 +260,11 @@ const handleStream = (
               onParallelBranchFinished?.(bufferObj as ParallelBranchFinishedResponse)
             }
             else if (bufferObj.event === 'text_chunk') {
+              console.log('🎪 [DEBUG] SSE received text_chunk event:', bufferObj)
               onTextChunk?.(bufferObj as TextChunkResponse)
+            }
+            else if (bufferObj.event === 'execution_log') {
+              onExecutionLog?.(bufferObj as ExecutionLogResponse)
             }
             else if (bufferObj.event === 'text_replace') {
               onTextReplace?.(bufferObj as TextReplaceResponse)
@@ -358,6 +366,7 @@ export const ssePost = async (
     onTTSEnd,
     onTextReplace,
     onAgentLog,
+    onExecutionLog,
     onError,
     getAbortController,
     onLoopStart,
@@ -460,6 +469,7 @@ export const ssePost = async (
         onTTSEnd,
         onTextReplace,
         onAgentLog,
+        onExecutionLog,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))

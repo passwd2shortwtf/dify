@@ -1,6 +1,8 @@
+'use client'
+import type { FC } from 'react'
 import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { format } from 'date-fns'
+import cn from '@/utils/classnames'
 
 export type WorkflowLogEntry = {
   timestamp: number
@@ -11,62 +13,102 @@ export type WorkflowLogEntry = {
   iterationNumber?: number
 }
 
-type WorkflowLogProps = {
+export type WorkflowLogProps = {
   logs: WorkflowLogEntry[]
   className?: string
 }
 
-const WorkflowLog: React.FC<WorkflowLogProps> = ({
+const WorkflowLog: FC<WorkflowLogProps> = ({
   logs,
-  className = '',
+  className,
 }) => {
   const { t } = useTranslation()
-  const logContainerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
+  // Auto-scroll to bottom when new logs are added
   useEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
   }, [logs])
 
-  const getLogMessage = (log: WorkflowLogEntry) => {
-    let message = log.message
-    if (log.nodeName) {
-      message = `[${log.nodeName}] ${message}`
+  const getTypeColor = (type: WorkflowLogEntry['type']) => {
+    switch (type) {
+      case 'info':
+        return 'text-text-secondary'
+      case 'success':
+        return 'text-text-success'
+      case 'error':
+        return 'text-text-destructive'
+      case 'warning':
+        return 'text-text-warning'
+      default:
+        return 'text-text-secondary'
     }
-    if (log.iterationNumber !== undefined) {
-      message = `${message} (第 ${log.iterationNumber} 次)`
+  }
+
+  const getTypeIcon = (type: WorkflowLogEntry['type']) => {
+    switch (type) {
+      case 'info':
+        return '💬'
+      case 'success':
+        return '✅'
+      case 'error':
+        return '❌'
+      case 'warning':
+        return '⚠️'
+      default:
+        return '💬'
     }
-    return message
   }
 
   return (
-    <div className={`flex flex-col h-full ${className}`}>
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
-        <div className="text-sm font-medium text-gray-900">{t('工作流日志')}</div>
+    <div className={cn('flex flex-col h-full', className)}>
+      <div className="flex items-center justify-between p-4 border-b border-divider-subtle">
+        <h3 className="text-text-primary system-md-semibold">
+          {t('workflow.log.title', 'Workflow Logs')}
+        </h3>
+        <span className="text-text-tertiary system-xs-regular">
+          {t('workflow.log.totalLogs', { count: logs.length }, `${logs.length} logs`)}
+        </span>
       </div>
-      <div ref={logContainerRef} className="flex-1 overflow-auto p-4">
-        {logs.map((log, index) => (
-          <div
-            key={index}
-            className={`flex items-start mb-2 text-sm ${
-              log.type === 'error' ? 'text-red-600' :
-              log.type === 'success' ? 'text-green-600' :
-              log.type === 'warning' ? 'text-yellow-600' :
-              'text-gray-600'
-            }`}
-          >
-            <div className="flex-shrink-0 w-32">
-              {format(log.timestamp, 'HH:mm:ss')}
-            </div>
-            <div className="flex-1">
-              {getLogMessage(log)}
-            </div>
+      
+      <div 
+        ref={containerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-2"
+      >
+        {logs.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-text-tertiary">
+            {t('workflow.log.noLogs', 'No logs available')}
           </div>
-        ))}
+        ) : (
+          logs.map((log, index) => (
+            <div key={index} className="flex items-start gap-2 p-2 rounded-lg bg-background-default-subtle">
+              <span className="text-sm">{getTypeIcon(log.type)}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={cn('system-xs-semibold', getTypeColor(log.type))}>
+                    {log.type.toUpperCase()}
+                  </span>
+                  <span className="text-text-tertiary system-xs-regular">
+                    {new Date(log.timestamp).toLocaleTimeString()}
+                  </span>
+                  {log.nodeName && (
+                    <span className="text-text-secondary system-xs-regular bg-background-default-subtle px-1 rounded">
+                      {log.nodeName}
+                    </span>
+                  )}
+                </div>
+                <div className="text-text-primary system-sm-regular break-words">
+                  {log.message}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   )
 }
 
-export default WorkflowLog 
+export default WorkflowLog

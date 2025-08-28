@@ -2,6 +2,7 @@ import type {
   IOnCompleted,
   IOnData,
   IOnError,
+  IOnExecutionLog,
   IOnFile,
   IOnIterationFinished,
   IOnIterationNext,
@@ -105,19 +106,21 @@ export const sendWorkflowMessage = async (
     onLoopFinish,
     onTextChunk,
     onTextReplace,
+    onExecutionLog,
   }: {
-    onWorkflowStarted: IOnWorkflowStarted
-    onNodeStarted: IOnNodeStarted
-    onNodeFinished: IOnNodeFinished
-    onWorkflowFinished: IOnWorkflowFinished
-    onIterationStart: IOnIterationStarted
-    onIterationNext: IOnIterationNext
-    onIterationFinish: IOnIterationFinished
-    onLoopStart: IOnLoopStarted
-    onLoopNext: IOnLoopNext
-    onLoopFinish: IOnLoopFinished
-    onTextChunk: IOnTextChunk
-    onTextReplace: IOnTextReplace
+    onWorkflowStarted?: IOnWorkflowStarted
+    onNodeStarted?: IOnNodeStarted
+    onNodeFinished?: IOnNodeFinished
+    onWorkflowFinished?: IOnWorkflowFinished
+    onIterationStart?: IOnIterationStarted
+    onIterationNext?: IOnIterationNext
+    onIterationFinish?: IOnIterationFinished
+    onLoopStart?: IOnLoopStarted
+    onLoopNext?: IOnLoopNext
+    onLoopFinish?: IOnLoopFinished
+    onTextChunk?: IOnTextChunk
+    onTextReplace?: IOnTextReplace
+    onExecutionLog?: IOnExecutionLog
   },
   isInstalledApp: boolean,
   installedAppId = '',
@@ -141,6 +144,7 @@ export const sendWorkflowMessage = async (
     onLoopFinish,
     onTextChunk,
     onTextReplace,
+    onExecutionLog,
   })
 }
 

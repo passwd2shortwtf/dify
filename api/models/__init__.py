@@ -90,6 +90,10 @@ from .workflow import (
     WorkflowRun,
     WorkflowType,
 )
+from .workflow_execution_log import (
+    WorkflowExecutionLog,
+    WorkflowExecutionLogLevel,
+)
 
 __all__ = [
     "APIBasedExtension",
@@ -177,5 +181,7 @@ __all__ = [
     "WorkflowRunTriggeredFrom",
     "WorkflowToolProvider",
     "WorkflowType",
+    "WorkflowExecutionLog",
+    "WorkflowExecutionLogLevel",
     "db",
 ]

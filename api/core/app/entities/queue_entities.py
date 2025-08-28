@@ -51,6 +51,7 @@ class QueueEvent(StrEnum):
     PING = "ping"
     STOP = "stop"
     RETRY = "retry"
+    EXECUTION_LOG = "execution_log"
 
 
 class AppQueueEvent(BaseModel):
@@ -651,6 +652,29 @@ class QueueStopEvent(AppQueueEvent):
         }
 
         return reason_mapping.get(self.stopped_by, "Stopped by unknown reason.")
+
+
+class QueueExecutionLogEvent(AppQueueEvent):
+    """
+    QueueExecutionLogEvent entity
+    Real-time execution log streaming event
+    """
+
+    event: QueueEvent = QueueEvent.EXECUTION_LOG
+    node_execution_id: str
+    node_id: str
+    node_type: NodeType
+    log_content: str
+    log_level: str
+    log_time: datetime
+    parallel_id: Optional[str] = None
+    """parallel id if node is in parallel"""
+    parallel_start_node_id: Optional[str] = None
+    """parallel start node id if node is in parallel"""
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
 
 
 class QueueMessage(BaseModel):

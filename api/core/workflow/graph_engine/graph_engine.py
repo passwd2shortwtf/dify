@@ -28,6 +28,7 @@ from core.workflow.graph_engine.entities.event import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunExceptionEvent,
+    NodeRunExecutionLogEvent,
     NodeRunFailedEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunRetryEvent,
@@ -57,6 +58,8 @@ from core.workflow.utils import variable_utils
 from libs.flask_utils import preserve_flask_contexts
 from models.enums import UserFrom
 from models.workflow import WorkflowType
+from models.workflow_execution_log import WorkflowExecutionLog, WorkflowExecutionLogLevel
+from services.workflow_execution_log_service import WorkflowExecutionLogService
 
 logger = logging.getLogger(__name__)
 
@@ -798,6 +801,29 @@ class GraphEngine:
 
                             break
                         elif isinstance(event, RunStreamChunkEvent):
+                            # Store execution log to database
+                            self._store_execution_log(
+                                event=event,
+                                node_instance=node_instance
+                            )
+                            
+                            # Emit execution log event for real-time log streaming
+                            yield NodeRunExecutionLogEvent(
+                                id=node_instance.id,
+                                node_id=node_instance.node_id,
+                                node_type=node_instance.node_type,
+                                node_data=node_instance.node_data,
+                                log_content=event.chunk_content,
+                                log_level=self._get_log_level_from_event(event),
+                                log_time=datetime.now(UTC).replace(tzinfo=None),
+                                route_node_state=route_node_state,
+                                parallel_id=parallel_id,
+                                parallel_start_node_id=parallel_start_node_id,
+                                parent_parallel_id=parent_parallel_id,
+                                parent_parallel_start_node_id=parent_parallel_start_node_id,
+                                node_version=node_instance.version(),
+                            )
+                            
                             yield NodeRunStreamChunkEvent(
                                 id=node_instance.id,
                                 node_id=node_instance.node_id,
@@ -933,6 +959,109 @@ class GraphEngine:
                 },
             )
         return error_result
+
+    def _store_execution_log(
+        self,
+        event: RunStreamChunkEvent,
+        node_instance: BaseNode,
+    ) -> None:
+        """
+        Store execution log to database
+        
+        Args:
+            event: The RunStreamChunkEvent containing log information
+            node_instance: The node instance that generated the log
+        """
+        try:
+            # Get workflow_run_id from system variables
+            from core.workflow.enums import SystemVariableKey
+            workflow_run_id_value = self.graph_runtime_state.variable_pool.system_variables.get(
+                SystemVariableKey.WORKFLOW_EXECUTION_ID
+            )
+            
+            if not workflow_run_id_value:
+                logger.warning("workflow_run_id not found in system variables, skipping log storage")
+                return
+                
+            workflow_run_id = str(workflow_run_id_value)
+            
+            # Extract log level from from_variable_selector
+            # Format is [node_id, log_type] where log_type is "stdout", "stderr", etc.
+            log_level_str = "info"  # default
+            if (event.from_variable_selector and 
+                len(event.from_variable_selector) > 1):
+                selector_log_type = event.from_variable_selector[1]
+                if selector_log_type in ["stdout"]:
+                    log_level_str = "stdout"
+                elif selector_log_type in ["stderr"]:
+                    log_level_str = "stderr"
+                elif selector_log_type in ["error"]:
+                    log_level_str = "error"
+            
+            # Map to WorkflowExecutionLogLevel enum
+            log_level = WorkflowExecutionLogLevel.INFO  # default
+            try:
+                log_level = WorkflowExecutionLogLevel(log_level_str)
+            except ValueError:
+                # If invalid log level, default to INFO
+                log_level = WorkflowExecutionLogLevel.INFO
+            
+            # Parse log content - remove prefixes like [OUTPUT], [ERROR], etc.
+            log_content = event.chunk_content
+            prefixes_to_remove = ["[OUTPUT]", "[ERROR]", "[INFO]"]
+            for prefix in prefixes_to_remove:
+                if log_content.startswith(prefix):
+                    log_content = log_content[len(prefix):].strip()
+                    break
+            
+            # Skip empty logs
+            if not log_content.strip():
+                return
+            
+            # Store to database
+            WorkflowExecutionLogService.add_log(
+                tenant_id=self.init_params.tenant_id,
+                app_id=self.init_params.app_id,
+                workflow_id=self.init_params.workflow_id,
+                workflow_run_id=workflow_run_id,
+                node_id=node_instance.node_id,
+                log_content=log_content,
+                log_level=log_level,
+                log_time=datetime.now(UTC).replace(tzinfo=None),
+                node_execution_id=node_instance.id,  # Use node instance id as execution id
+            )
+            
+        except Exception as e:
+            # Log storage should not affect workflow execution
+            # Just log the error and continue
+            logger.warning(f"Failed to store execution log: {str(e)}", exc_info=True)
+
+    def _get_log_level_from_event(self, event: RunStreamChunkEvent) -> str:
+        """
+        Extract log level from RunStreamChunkEvent
+        
+        Args:
+            event: The RunStreamChunkEvent containing log information
+            
+        Returns:
+            Log level string (stdout/stderr/info/error)
+        """
+        from models.workflow_execution_log import WorkflowExecutionLogLevel
+        
+        # Extract log level from from_variable_selector
+        # Format is [node_id, log_type] where log_type is "stdout", "stderr", etc.
+        log_level_str = "info"  # default
+        if (event.from_variable_selector and 
+            len(event.from_variable_selector) > 1):
+            selector_log_type = event.from_variable_selector[1]
+            if selector_log_type in ["stdout"]:
+                log_level_str = "stdout"
+            elif selector_log_type in ["stderr"]:
+                log_level_str = "stderr"
+            elif selector_log_type in ["error"]:
+                log_level_str = "error"
+        
+        return log_level_str
 
 
 class GraphRunFailedError(Exception):

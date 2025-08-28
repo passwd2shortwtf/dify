@@ -1,8 +1,9 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Generator
 from typing import Any, Optional
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
+from core.helper.code_executor.streaming_code_executor import StreamingCodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
@@ -12,6 +13,7 @@ from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
 from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
 
 from .exc import (
     CodeNodeError,
@@ -44,7 +46,20 @@ class CodeNode(BaseNode[CodeNodeData]):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> NodeRunResult:
+    def _run(self) -> Generator[RunCompletedEvent | RunStreamChunkEvent, None, None]:
+        # Check if streaming is enabled
+        streaming_enabled = self.node_data.streaming and self.node_data.streaming.enabled
+        
+        if streaming_enabled:
+            # Use streaming execution
+            yield from self._run_streaming()
+        else:
+            # Use traditional synchronous execution - wrap result in generator
+            result = self._run_sync()
+            yield RunCompletedEvent(run_result=result)
+    
+    def _run_sync(self) -> NodeRunResult:
+        """Traditional synchronous code execution"""
         # Get code language
         code_language = self.node_data.code_language
         code = self.node_data.code
@@ -74,6 +89,118 @@ class CodeNode(BaseNode[CodeNodeData]):
             )
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=result)
+    
+    def _run_streaming(self) -> Generator[RunCompletedEvent | RunStreamChunkEvent, None, None]:
+        """Streaming code execution with real-time logs"""
+        # Get code language
+        code_language = self.node_data.code_language
+        code = self.node_data.code
+        
+        # Get variables
+        variables = {}
+        for variable_selector in self.node_data.variables:
+            variable_name = variable_selector.variable
+            variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+            if isinstance(variable, ArrayFileSegment):
+                variables[variable_name] = [v.to_dict() for v in variable.value] if variable.value else None
+            else:
+                variables[variable_name] = variable.to_object() if variable else None
+        
+        try:
+            # Use streaming code executor
+            final_result = None
+            accumulated_stdout = ""
+            accumulated_stderr = ""
+            
+            for event in StreamingCodeExecutor.execute_workflow_code_template_streaming(
+                language=code_language,
+                code=code,
+                inputs=variables,
+            ):
+                if event.is_log:
+                    # Send real-time log events
+                    log_content = event.log_content or ""
+                    
+                    if event.log_type == "stdout":
+                        accumulated_stdout += log_content
+                        # Send stdout content
+                        yield RunStreamChunkEvent(
+                            chunk_content=f"[OUTPUT] {log_content}",
+                            from_variable_selector=[self.node_id, "stdout"]
+                        )
+                    elif event.log_type == "stderr":
+                        accumulated_stderr += log_content
+                        # Send stderr content
+                        yield RunStreamChunkEvent(
+                            chunk_content=f"[ERROR] {log_content}",
+                            from_variable_selector=[self.node_id, "stderr"]
+                        )
+                        
+                elif event.is_complete:
+                    # Get final result
+                    if event.result:
+                        final_result = event.result
+                        
+                elif event.event_type == "transformed":
+                    # Get transformed result
+                    if event.data and "result" in event.data:
+                        final_result = event.data["result"]
+            
+            # Process final result
+            if final_result is None:
+                # If no transformed result, use accumulated output
+                final_result = {
+                    "output": accumulated_stdout.strip() if accumulated_stdout else "",
+                    "error": accumulated_stderr.strip() if accumulated_stderr else ""
+                }
+            
+            # Transform result
+            transformed_result = self._transform_result(
+                result=final_result, 
+                output_schema=self.node_data.outputs
+            )
+            
+            # Send completion event
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    inputs=variables,
+                    outputs=transformed_result
+                )
+            )
+            
+        except (CodeExecutionError, CodeNodeError, OutputValidationError) as e:
+            # Send error log
+            yield RunStreamChunkEvent(
+                chunk_content=f"[ERROR] Execution failed: {str(e)}",
+                from_variable_selector=[self.node_id, "error"]
+            )
+            
+            # Send failure event
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=variables,
+                    error=str(e),
+                    error_type=type(e).__name__
+                )
+            )
+        except Exception as e:
+            # Send unexpected error log
+            yield RunStreamChunkEvent(
+                chunk_content=f"[ERROR] Unexpected error: {str(e)}",
+                from_variable_selector=[self.node_id, "error"]
+            )
+            
+            # Send failure event
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=variables,
+                    error=f"Unexpected error: {str(e)}",
+                    error_type="UnexpectedError"
+                )
+            )
 
     def _check_string(self, value: str | None, variable: str) -> str | None:
         """

@@ -72,6 +72,10 @@ const translation = {
       moreThanMaxLengthLine: '第 {{rowIndex}} 行：{{varName}}值超过最大长度 {{maxLength}}',
       atLeastOne: '上传文件的内容不能少于一条',
     },
+    executionHistory: '执行历史',
+    selectRunToView: '选择运行记录查看详情',
+    selectRunToViewDesc: '从左侧历史列表中选择一条运行记录',
+    log: '日志',
   },
   login: {
     backToHome: '返回首页',

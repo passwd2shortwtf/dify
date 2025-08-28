@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
 import TracingPanel from './tracing-panel'
+import LogPanel from './log-panel'
 import cn from '@/utils/classnames'
 import { ToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
@@ -18,7 +19,7 @@ import { useStore } from '@/app/components/workflow/store'
 
 export type RunProps = {
   hideResult?: boolean
-  activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
+  activeTab?: 'RESULT' | 'DETAIL' | 'TRACING' | 'LOG'
   runID: string
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
 }
@@ -133,6 +134,13 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
           )}
           onClick={() => switchTab('TRACING')}
         >{t('runLog.tracing')}</div>
+        <div
+          className={cn(
+            'system-sm-semibold-uppercase mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
+            currentTab === 'LOG' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
+          )}
+          onClick={() => switchTab('LOG')}
+        >{t('workflow.panel.executionLogs')}</div>
       </div>
       {/* panel detail */}
       <div ref={ref} className={cn('relative h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg')}>
@@ -168,12 +176,20 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
             list={list}
           />
         )}
+        {!loading && currentTab === 'LOG' && (
+          <LogPanel
+            appId={appDetail?.id || ''}
+            workflowRunId={runID}
+            isRunning={runDetail?.status === 'running'}
+            height={height}
+          />
+        )}
         {runDetail?.status === 'running' && (
           <div className='sticky bottom-0 flex justify-end p-4 bg-components-panel-bg border-t border-gray-200'>
             <button
               onClick={async () => {
                 try {
-                  await stopWorkflowRun(`/apps/${appDetail?.id}/workflow-runs/tasks/${workflowRunningData?.task_id}/stop`)
+                  await stopWorkflowRun(`/apps/${appDetail?.id}/workflow-runs/${runID}/stop`)
                   notify({ type: 'info', message: t('appDebug.infoMessage.workflowStopped') })
                 } catch (error) {
                   console.error('Failed to stop workflow:', error)

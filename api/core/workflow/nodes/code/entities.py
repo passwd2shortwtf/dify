@@ -20,8 +20,16 @@ class CodeNodeData(BaseNodeData):
         name: str
         version: str
 
+    class StreamingConfig(BaseModel):
+        """Streaming configuration for real-time logs"""
+        enabled: bool = False
+        buffer_timeout: int = 100  # milliseconds
+        max_log_lines: int = 1000
+
     variables: list[VariableSelector]
     code_language: Literal[CodeLanguage.PYTHON3, CodeLanguage.JAVASCRIPT]
     code: str
     outputs: dict[str, Output]
     dependencies: Optional[list[Dependency]] = None
+    # Streaming configuration
+    streaming: Optional[StreamingConfig] = None

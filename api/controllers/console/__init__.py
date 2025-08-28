@@ -21,6 +21,7 @@ from .explore.message import (
 from .explore.workflow import (
     InstalledAppWorkflowRunApi,
     InstalledAppWorkflowTaskStopApi,
+    InstalledAppWorkflowRunStopApi,
 )
 from .files import FileApi, FilePreviewApi, FileSupportTypeApi
 from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
@@ -164,6 +165,9 @@ api.add_resource(
 api.add_resource(InstalledAppWorkflowRunApi, "/installed-apps/<uuid:installed_app_id>/workflows/run")
 api.add_resource(
     InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
+)
+api.add_resource(
+    InstalledAppWorkflowRunStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/run/<string:workflow_run_id>/stop"
 )
 
 # Import tag controllers

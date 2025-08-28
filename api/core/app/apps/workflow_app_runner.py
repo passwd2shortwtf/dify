@@ -13,6 +13,7 @@ from core.app.entities.queue_entities import (
     QueueLoopNextEvent,
     QueueLoopStartEvent,
     QueueNodeExceptionEvent,
+    QueueExecutionLogEvent,
     QueueNodeFailedEvent,
     QueueNodeInIterationFailedEvent,
     QueueNodeInLoopFailedEvent,
@@ -49,6 +50,7 @@ from core.workflow.graph_engine.entities.event import (
     NodeInIterationFailedEvent,
     NodeInLoopFailedEvent,
     NodeRunExceptionEvent,
+    NodeRunExecutionLogEvent,
     NodeRunFailedEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunRetryEvent,
@@ -521,6 +523,21 @@ class WorkflowBasedAppRunner(AppRunner):
                     from_variable_selector=event.from_variable_selector,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
+                )
+            )
+        elif isinstance(event, NodeRunExecutionLogEvent):
+            self._publish_event(
+                QueueExecutionLogEvent(
+                    node_execution_id=event.id,
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    log_content=event.log_content,
+                    log_level=event.log_level,
+                    log_time=event.log_time,
+                    parallel_id=event.parallel_id,
+                    parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                 )
             )
         elif isinstance(event, NodeRunRetrieverResourceEvent):

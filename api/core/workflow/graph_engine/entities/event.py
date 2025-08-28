@@ -84,6 +84,13 @@ class NodeRunStreamChunkEvent(BaseNodeEvent):
     """from variable selector"""
 
 
+class NodeRunExecutionLogEvent(BaseNodeEvent):
+    log_content: str = Field(..., description="execution log content")
+    log_level: str = Field(..., description="log level (stdout/stderr/info/error)")
+    log_time: datetime = Field(..., description="log timestamp")
+    """execution log event for real-time log streaming"""
+
+
 class NodeRunRetrieverResourceEvent(BaseNodeEvent):
     retriever_resources: Sequence[RetrievalSourceMetadata] = Field(..., description="retriever resources")
     context: str = Field(..., description="context")

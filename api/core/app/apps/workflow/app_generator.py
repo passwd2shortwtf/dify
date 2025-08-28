@@ -19,6 +19,7 @@ from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
+from core.app.apps.workflow.workflow_thread_registry import workflow_thread_registry
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -233,9 +234,19 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 "workflow_thread_pool_id": workflow_thread_pool_id,
                 "variable_loader": variable_loader,
             },
+            name=f"Workflow-{application_generate_entity.task_id[:8]}"
         )
 
         worker_thread.start()
+        
+        # Register thread in global registry for cross-request access
+        workflow_thread_registry.register_thread(
+            task_id=application_generate_entity.task_id,
+            thread=worker_thread,
+            queue_manager=queue_manager,
+            workflow_run_id=application_generate_entity.workflow_execution_id,
+            user_id=application_generate_entity.user_id
+        )
 
         draft_var_saver_factory = self._get_draft_var_saver_factory(
             invoke_from,
@@ -470,6 +481,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
+                # Unregister thread when workflow completes
+                workflow_thread_registry.unregister_thread(application_generate_entity.task_id)
                 db.session.close()
 
     def _handle_response(

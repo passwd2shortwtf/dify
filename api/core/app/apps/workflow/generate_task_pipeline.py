@@ -16,6 +16,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueErrorEvent,
+    QueueExecutionLogEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -557,6 +558,9 @@ class WorkflowAppGenerateTaskPipeline:
                 yield self._text_chunk_to_stream_response(
                     delta_text, from_variable_selector=event.from_variable_selector
                 )
+            elif isinstance(event, QueueExecutionLogEvent):
+                # Handle execution log event
+                yield self._execution_log_to_stream_response(event)
             elif isinstance(event, QueueAgentLogEvent):
                 yield self._workflow_response_converter.handle_agent_log(
                     task_id=self._application_generate_entity.task_id, event=event
@@ -604,6 +608,33 @@ class WorkflowAppGenerateTaskPipeline:
         response = TextChunkStreamResponse(
             task_id=self._application_generate_entity.task_id,
             data=TextChunkStreamResponse.Data(text=text, from_variable_selector=from_variable_selector),
+        )
+
+        return response
+
+    def _execution_log_to_stream_response(self, event: QueueExecutionLogEvent) -> StreamResponse:
+        """
+        Handle execution log event and convert to stream response.
+        :param event: execution log event
+        :return: stream response
+        """
+        from core.app.entities.task_entities import ExecutionLogStreamResponse
+        
+        response = ExecutionLogStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            workflow_run_id=self._workflow_run_id,
+            data=ExecutionLogStreamResponse.Data(
+                node_execution_id=event.node_execution_id,
+                node_id=event.node_id,
+                node_type=event.node_type.value,
+                log_content=event.log_content,
+                log_level=event.log_level,
+                log_time=event.log_time.isoformat(),
+                parallel_id=event.parallel_id,
+                parallel_start_node_id=event.parallel_start_node_id,
+                parent_parallel_id=event.parent_parallel_id,
+                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+            ),
         )
 
         return response

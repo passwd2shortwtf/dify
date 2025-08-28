@@ -53,6 +53,7 @@ class WorkflowExecution(BaseModel):
 
     started_at: datetime = Field(...)
     finished_at: Optional[datetime] = None
+    task_id: Optional[str] = None
 
     @property
     def elapsed_time(self) -> float:
@@ -74,6 +75,7 @@ class WorkflowExecution(BaseModel):
         graph: Mapping[str, Any],
         inputs: Mapping[str, Any],
         started_at: datetime,
+        task_id: Optional[str] = None,
     ) -> "WorkflowExecution":
         return WorkflowExecution(
             id_=id_,
@@ -84,4 +86,5 @@ class WorkflowExecution(BaseModel):
             inputs=inputs,
             status=WorkflowExecutionStatus.RUNNING,
             started_at=started_at,
+            task_id=task_id,
         )

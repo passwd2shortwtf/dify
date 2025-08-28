@@ -272,6 +272,25 @@ export type TextChunkResponse = {
   event: string
   data: {
     text: string
+    from_variable_selector?: string[]
+  }
+}
+
+export type ExecutionLogResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    node_execution_id: string
+    node_id: string
+    node_type: string
+    log_content: string
+    log_level: string
+    log_time: string
+    parallel_id?: string
+    parallel_start_node_id?: string
+    parent_parallel_id?: string
+    parent_parallel_start_node_id?: string
   }
 }
 
@@ -314,6 +333,7 @@ export type WorkflowRunHistory = {
     name: string
     email: string
   }
+  task_id?: string
 }
 export type WorkflowRunHistoryResponse = {
   data: WorkflowRunHistory[]

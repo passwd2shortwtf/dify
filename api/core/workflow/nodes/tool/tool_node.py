@@ -180,6 +180,46 @@ class ToolNode(BaseNode[ToolNodeData]):
             result[parameter_name] = parameter_value
 
         return result
+    
+    def _handle_stream_log(self, message: ToolInvokeMessage) -> Generator:
+        """处理流式日志消息，转换为RunStreamChunkEvent"""
+        import datetime
+        
+        log_data = message.message.data
+        log_type = log_data.get("log_type", "info")
+        content = log_data.get("content", "")
+        timestamp = log_data.get("timestamp")
+        
+        # 根据日志类型添加前缀，与code_node保持一致
+        if log_type == "stdout":
+            formatted_content = f"[OUTPUT] {content}"
+            variable_selector = [self.node_id, "stdout"]
+        elif log_type == "stderr":
+            formatted_content = f"[ERROR] {content}"
+            variable_selector = [self.node_id, "stderr"]
+        elif log_type == "info":
+            formatted_content = f"[INFO] {content}"
+            variable_selector = [self.node_id, "info"]
+        elif log_type == "warning":
+            formatted_content = f"[WARNING] {content}"
+            variable_selector = [self.node_id, "warning"]
+        elif log_type == "error":
+            formatted_content = f"[ERROR] {content}"
+            variable_selector = [self.node_id, "error"]
+        else:
+            formatted_content = f"[LOG] {content}"
+            variable_selector = [self.node_id, "log"]
+        
+        # 添加时间戳（如果存在）
+        if timestamp:
+            time_str = datetime.datetime.fromtimestamp(timestamp).strftime("%H:%M:%S")
+            formatted_content = f"[{time_str}] {formatted_content}"
+        
+        # 发送流式事件，与code_node完全一致
+        yield RunStreamChunkEvent(
+            chunk_content=formatted_content,
+            from_variable_selector=variable_selector
+        )
 
     def _fetch_files(self, variable_pool: VariablePool) -> list[File]:
         variable = variable_pool.get(["sys", SystemVariableKey.FILES.value])
@@ -314,6 +354,14 @@ class ToolNode(BaseNode[ToolNodeData]):
                 files.append(message.meta["file"])
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
+                
+                # 检查是否为流式日志
+                if (message.message.data.get("__dify_stream_log") and 
+                    isinstance(message.message.data, dict)):
+                    # 处理流式日志
+                    yield from self._handle_stream_log(message)
+                    continue  # 跳过正常LOG处理
+                
                 if message.message.metadata:
                     icon = tool_info.get("icon", "")
                     dict_metadata = dict(message.message.metadata)

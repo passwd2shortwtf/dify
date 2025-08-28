@@ -76,6 +76,10 @@ const translation = {
       moreThanMaxLengthLine: 'Row {{rowIndex}}: {{varName}} value can not be more than {{maxLength}} characters',
       atLeastOne: 'Please input at least one row in the uploaded file.',
     },
+    executionHistory: 'Execution History',
+    selectRunToView: 'Select a run to view details',
+    selectRunToViewDesc: 'Choose a run record from the history list on the left',
+    log: 'Log',
   },
   login: {
     backToHome: 'Back to Home',

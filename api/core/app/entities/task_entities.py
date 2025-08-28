@@ -82,6 +82,7 @@ class StreamEvent(Enum):
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
     AGENT_LOG = "agent_log"
+    EXECUTION_LOG = "execution_log"
 
 
 class StreamResponse(BaseModel):
@@ -836,4 +837,31 @@ class AgentLogStreamResponse(StreamResponse):
         node_id: str
 
     event: StreamEvent = StreamEvent.AGENT_LOG
+    data: Data
+
+
+class ExecutionLogStreamResponse(StreamResponse):
+    """
+    ExecutionLogStreamResponse entity
+    Real-time execution log streaming response
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        node_execution_id: str
+        node_id: str
+        node_type: str
+        log_content: str
+        log_level: str
+        log_time: str
+        parallel_id: Optional[str] = None
+        parallel_start_node_id: Optional[str] = None
+        parent_parallel_id: Optional[str] = None
+        parent_parallel_start_node_id: Optional[str] = None
+
+    event: StreamEvent = StreamEvent.EXECUTION_LOG
+    workflow_run_id: str
     data: Data

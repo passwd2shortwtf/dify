@@ -1,0 +1,13 @@
+# 数据库分析工具依赖
+
+# PostgreSQL 数据库连接
+psycopg2-binary>=2.9.0
+
+# 数据分析 (可选，用于更详细的分析)
+pandas>=1.5.0
+
+# 命令行参数解析 (Python内置，无需安装)
+# argparse
+
+# 使用说明:
+# pip install -r database_analysis_requirements.txt

@@ -30,6 +30,8 @@ import { changeLanguage } from '@/i18n/i18next-config'
 import Loading from '@/app/components/base/loading'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Res from '@/app/components/share/text-generation/result'
+import ExecutionHistory from '@/app/components/share/text-generation/execution-history'
+import EnhancedResult from '@/app/components/share/text-generation/enhanced-result'
 import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
 import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
@@ -448,6 +450,22 @@ const TextGeneration: FC<IMainProps> = ({
     }, 0)
   }
   const [resultExisted, setResultExisted] = useState(false)
+  const [selectedRunId, setSelectedRunId] = useState<string>()
+  const [workflowLogs, setWorkflowLogs] = useState<any[]>([])
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
+
+  const handleSelectRun = (runId: string) => {
+    setSelectedRunId(runId)
+  }
+
+  const handleSelectCurrentRun = (runId: string) => {
+    setSelectedRunId(runId)
+  }
+
+  const handleExecutionStatusChange = () => {
+    // 触发执行历史列表刷新，同时保持当前选中状态
+    setRefreshTrigger(Date.now())
+  }
 
   const renderRes = (task?: Task) => (<Res
     key={task?.id}
@@ -482,7 +500,8 @@ const TextGeneration: FC<IMainProps> = ({
   const renderResWrap = (
     <div
       className={cn(
-        'relative flex h-full flex-col',
+        'relative flex h-full',
+        isPC && isWorkflow ? 'flex-row' : 'flex-col',
         !isPC && 'h-[calc(100vh_-_36px)] rounded-t-2xl shadow-lg backdrop-blur-sm',
         !isPC
           ? isShowResultPanel
@@ -491,39 +510,90 @@ const TextGeneration: FC<IMainProps> = ({
           : 'bg-chatbot-bg',
       )}
     >
-      {isCallBatchAPI && (
-        <div className={cn(
-          'flex shrink-0 items-center justify-between px-14 pb-2 pt-9',
-          !isPC && 'px-4 pb-1 pt-3',
-        )}>
-          <div className='system-md-semibold-uppercase text-text-primary'>{t('share.generation.executions', { num: allTaskList.length })}</div>
-          {allSuccessTaskList.length > 0 && (
-            <ResDownload
+      {/* Workflow模式下的布局：左侧历史列表 + 右侧结果 */}
+      {isWorkflow && isPC ? (
+        <>
+          {/* 左侧：执行历史列表 */}
+          <ExecutionHistory
+            appId={installedAppInfo?.app?.id || "appId not found"}
+            isWorkflow={isWorkflow}
+            selectedRunId={selectedRunId}
+            onSelectRun={handleSelectRun}
+            refreshTrigger={refreshTrigger}
+          />
+          
+          {/* 右侧：EnhancedResult */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <EnhancedResult
+              isWorkflow={isWorkflow}
+              isCallBatchAPI={isCallBatchAPI}
+              isPC={isPC}
               isMobile={!isPC}
-              values={exportRes}
+              isInstalledApp={isInstalledApp}
+              installedAppInfo={installedAppInfo}
+              isError={false}
+              isShowTextToSpeech={!!textToSpeechConfig?.enabled}
+              promptConfig={promptConfig}
+              moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
+              inputs={inputs}
+              controlSend={controlSend}
+              controlRetry={controlRetry}
+              controlStopResponding={controlStopResponding}
+              onShowRes={showResultPanel}
+              onSaveMessage={handleSaveMessage}
+              taskId={undefined}
+              onCompleted={handleCompleted}
+              visionConfig={visionConfig}
+              completionFiles={completionFiles}
+              siteInfo={siteInfo}
+              onRunStart={() => setResultExisted(true)}
+              appId={installedAppInfo?.app?.id || "appId not found"}
+              runId={selectedRunId}
+              workflowLogs={workflowLogs}
+              onSelectCurrentRun={handleSelectCurrentRun}
+              onExecutionStatusChange={handleExecutionStatusChange}
+              className="h-full"
             />
-          )}
-        </div>
-      )}
-      <div className={cn(
-        'flex h-0 grow flex-col overflow-y-auto',
-        isPC && 'px-14 py-8',
-        isPC && isCallBatchAPI && 'pt-0',
-        !isPC && 'p-0 pb-2',
-      )}>
-        {!isCallBatchAPI ? renderRes() : renderBatchRes()}
-        {!noPendingTask && (
-          <div className='mt-4'>
-            <Loading type='area' />
           </div>
-        )}
-      </div>
-      {isCallBatchAPI && allFailedTaskList.length > 0 && (
-        <div className='absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-sm'>
-          <RiErrorWarningFill className='h-4 w-4 text-text-destructive' />
-          <div className='system-sm-medium text-text-secondary'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
-          <div className='h-3.5 w-px bg-divider-regular'></div>
-          <div onClick={handleRetryAllFailedTask} className='system-sm-semibold-uppercase cursor-pointer text-text-accent'>{t('share.generation.batchFailed.retry')}</div>
+        </>
+      ) : (
+        /* 非Workflow模式或移动端使用原来的逻辑 */
+        <div className="flex flex-col h-full w-full">
+          {isCallBatchAPI && (
+            <div className={cn(
+              'flex shrink-0 items-center justify-between px-14 pb-2 pt-9',
+              !isPC && 'px-4 pb-1 pt-3',
+            )}>
+              <div className='system-md-semibold-uppercase text-text-primary'>{t('share.generation.executions', { num: allTaskList.length })}</div>
+              {allSuccessTaskList.length > 0 && (
+                <ResDownload
+                  isMobile={!isPC}
+                  values={exportRes}
+                />
+              )}
+            </div>
+          )}
+          <div className={cn(
+            'flex h-0 grow flex-col overflow-y-auto',
+            isPC && 'px-14 py-8',
+            isPC && isCallBatchAPI && 'pt-0',
+            !isPC && 'p-0 pb-2',
+          )}>
+            {!isCallBatchAPI ? renderRes() : renderBatchRes()}
+            {!noPendingTask && (
+              <div className='mt-4'>
+                <Loading type='area' />
+              </div>
+            )}
+          </div>
+          {isCallBatchAPI && allFailedTaskList.length > 0 && (
+            <div className='absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-sm'>
+              <RiErrorWarningFill className='h-4 w-4 text-text-destructive' />
+              <div className='system-sm-medium text-text-secondary'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
+              <div className='h-3.5 w-px bg-divider-regular'></div>
+              <div onClick={handleRetryAllFailedTask} className='system-sm-semibold-uppercase cursor-pointer text-text-accent'>{t('share.generation.batchFailed.retry')}</div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -120,6 +120,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             exceptions_count=db_model.exceptions_count,
             started_at=db_model.created_at,
             finished_at=db_model.finished_at,
+            task_id=db_model.task_id,
         )
 
     def _to_db_model(self, domain_model: WorkflowExecution) -> WorkflowRun:
@@ -168,6 +169,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         db_model.created_by = self._creator_user_id
         db_model.created_at = domain_model.started_at
         db_model.finished_at = domain_model.finished_at
+        db_model.task_id = domain_model.task_id
 
         # Calculate elapsed time if finished_at is available
         if domain_model.finished_at:

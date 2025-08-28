@@ -7,10 +7,19 @@ class Python3TemplateTransformer(TemplateTransformer):
     @classmethod
     def get_runner_script(cls) -> str:
         runner_script = dedent(f"""
+            # Override built-in print to add auto-flush for real-time logs
+            import builtins
+            original_print = builtins.print
+            def print(*args, **kwargs):
+                kwargs.setdefault('flush', True)
+                return original_print(*args, **kwargs)
+            builtins.print = print
+
             # declare main function
             {cls._code_placeholder}
 
             import json
+            import sys
             from base64 import b64decode
 
             # decode and prepare input dict

@@ -5,14 +5,15 @@ import useOutputVarList from '../_base/hooks/use-output-var-list'
 import { BlockEnum, VarType } from '../../types'
 import type { Var, Variable } from '../../types'
 import { useStore } from '../../store'
-import type { CodeNodeType, OutputVar } from './types'
-import { CodeLanguage } from './types'
+import type { CodeNodeType, OutputVar, StreamLogEvent, StreamingConfig } from './types'
+import { CodeLanguage, StreamingStatus } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { fetchNodeDefault } from '@/service/workflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
+
 
 const useConfig = (id: string, payload: CodeNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -171,6 +172,69 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     setInputs(newInputs)
     syncOutputKeyOrders(outputVariables)
   }, [inputs, setInputs, syncOutputKeyOrders])
+  // Streaming logs state
+  const [logs, setLogs] = useState<StreamLogEvent[]>([])
+  const [streamingStatus, setStreamingStatus] = useState<StreamingStatus>(StreamingStatus.IDLE)
+  const [isLogsVisible, setIsLogsVisible] = useState(false)
+
+  // Streaming configuration handlers
+  const handleStreamingConfigChange = useCallback((config: StreamingConfig) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.streaming = config
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleEnableStreamingChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      if (enabled) {
+        draft.streaming = {
+          enabled: true,
+          buffer_timeout: 100,
+          max_log_lines: 1000,
+        }
+      } else {
+        draft.streaming = {
+          enabled: false,
+          buffer_timeout: 100,
+          max_log_lines: 1000,
+        }
+      }
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  // Log management
+  const handleClearLogs = useCallback(() => {
+    setLogs([])
+  }, [])
+
+  const handleDownloadLogs = useCallback(() => {
+    const logContent = logs.map(log => 
+      `[${log.timestamp}] [${log.type.toUpperCase()}] ${log.content}`
+    ).join('\n')
+    
+    const blob = new Blob([logContent], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `code-logs-${id}-${Date.now()}.log`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [logs, id])
+
+  const handleAddLog = useCallback((log: StreamLogEvent) => {
+    setLogs(prev => {
+      const maxLines = inputs.streaming?.max_log_lines || 1000
+      const newLogs = [...prev, log]
+      return newLogs.slice(-maxLines) // Keep max lines limit
+    })
+  }, [inputs.streaming?.max_log_lines])
+
+
+
   return {
     readOnly,
     inputs,
@@ -188,6 +252,17 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     hideRemoveVarConfirm,
     onRemoveVarConfirm,
     handleCodeAndVarsChange,
+    // Streaming functionality
+    logs,
+    streamingStatus,
+    isLogsVisible,
+    setIsLogsVisible,
+    setStreamingStatus,
+    handleStreamingConfigChange,
+    handleEnableStreamingChange,
+    handleClearLogs,
+    handleDownloadLogs,
+    handleAddLog,
   }
 }
 

@@ -3,6 +3,7 @@ import produce from 'immer'
 import type { TextChunkResponse } from '@/types/workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
+
 export const useWorkflowTextChunk = () => {
   const workflowStore = useWorkflowStore()
 
@@ -17,6 +18,8 @@ export const useWorkflowTextChunk = () => {
       draft.resultTabActive = true
       draft.resultText += text
     }))
+
+
   }, [workflowStore])
 
   return {

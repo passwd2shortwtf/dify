@@ -75,6 +75,7 @@ class WorkflowCycleManager:
             graph=self._workflow_info.graph_data,
             inputs=inputs,
             started_at=datetime.now(UTC).replace(tzinfo=None),
+            task_id=self._application_generate_entity.task_id,
         )
 
         self._workflow_execution_repository.save(execution)

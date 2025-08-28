@@ -15,6 +15,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from controllers.web.wraps import WebApiResource
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.apps.workflow.workflow_thread_registry import workflow_thread_registry
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
@@ -23,8 +24,10 @@ from core.errors.error import (
 from core.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode, EndUser
+from models.workflow import WorkflowRun
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
+from extensions.ext_database import db
 
 logger = logging.getLogger(__name__)
 
@@ -75,10 +78,58 @@ class WorkflowTaskStopApi(WebApiResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
+        # Try to stop the workflow thread first
+        try:
+            stopped = workflow_thread_registry.stop_thread(task_id)
+            if stopped:
+                return {"result": "success"}
+        except Exception as e:
+            pass
+        
+        # Fallback to setting Redis stop flag
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
+        return {"result": "success"}
 
+
+class WorkflowRunStopApi(WebApiResource):
+    def post(self, app_model: App, end_user: EndUser, workflow_run_id: str):
+        """
+        Stop workflow by workflow_run_id
+        """
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode != AppMode.WORKFLOW:
+            raise NotWorkflowAppError()
+
+        # 使用简化停止机制 - 需要先获取task_id
+        from models.workflow import WorkflowRun
+        from extensions.ext_database import db
+        
+        workflow_run = db.session.query(WorkflowRun).filter(
+            WorkflowRun.id == workflow_run_id,
+            WorkflowRun.app_id == app_model.id
+        ).first()
+        
+        if not workflow_run:
+            return {"result": "failed", "message": "Workflow run not found"}, 404
+            
+        if not workflow_run.task_id:
+            return {"result": "failed", "message": "Task ID not found in workflow run"}, 400
+        
+        # Try to stop the workflow thread first
+        try:
+            stopped = workflow_thread_registry.stop_thread_by_workflow_run_id(workflow_run_id)
+            if stopped:
+                return {"result": "success"}
+        except Exception as e:
+            pass
+        
+        # Fallback to setting Redis stop flag if we have task_id
+        if workflow_run.task_id:
+            AppQueueManager.set_stop_flag(workflow_run.task_id, InvokeFrom.WEB_APP, end_user.id)
+        
         return {"result": "success"}
 
 
 api.add_resource(WorkflowRunApi, "/workflows/run")
 api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")
+api.add_resource(WorkflowRunStopApi, "/workflows/run/<string:workflow_run_id>/stop")
